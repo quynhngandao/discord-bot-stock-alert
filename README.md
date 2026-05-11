@@ -13,3 +13,18 @@ Alert-only Discord bot that scans stocks using Minervini and IBD criteria and po
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture flowchart |
 | [SUMMARY.md](./SUMMARY.md) | Full system design, modules, data flow, and component overview |
 | [MVP.md](./MVP.md) | MVP scope and build order |
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Run in development mode with hot reload |
+| `pnpm build` | Compile TypeScript to `dist/` |
+| `pnpm start` | Run compiled output |
+| `pnpm test:alert` | Send test alert embeds to Discord (no DB needed) |
+| `pnpm db:generate` | Generate Drizzle migration files from schema changes |
+| `pnpm db:migrate` | Apply pending migrations to the database |
+| `pnpm db:seed` | Seed the `symbols` table with the initial ticker list |
+| `pnpm db:studio` | Open Drizzle Studio to browse the database |
+| `pnpm lint` | Run ESLint |
+| `pnpm format` | Format source files with Prettier |
