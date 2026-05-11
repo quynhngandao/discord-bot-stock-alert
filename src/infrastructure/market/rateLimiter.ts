@@ -1,4 +1,6 @@
-const DEFAULT_DELAY_MS = 100; // 10 calls/sec, well under Finnhub (30/sec) and FMP (30/sec) limits
+// Tiingo free: ~50 requests/hour. 500ms spacing = max 120/hour, but quota is the real limit.
+// Finnhub free: 30 calls/min. FMP free: 300 calls/min.
+const DEFAULT_DELAY_MS = 500;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

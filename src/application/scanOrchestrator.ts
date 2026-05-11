@@ -6,7 +6,10 @@ import { fetchIncomeStatements } from "../infrastructure/market/fmpClient.js";
 import { fetchHistoricalPrices } from "../infrastructure/market/tiingoClient.js";
 import { finnhubClient } from "../infrastructure/market/finnhubClient.js";
 import type { CompanyProfile } from "../infrastructure/market/finnhubClient.js";
-import { fetchProfileFallback } from "../infrastructure/market/alphaVantageClient.js";
+import {
+  fetchFundamentalsFallback,
+  fetchProfileFallback,
+} from "../infrastructure/market/alphaVantageClient.js";
 import { withRateLimit } from "../infrastructure/market/rateLimiter.js";
 import type { MinerviniMetrics, ScoringBreakdown, StockScanResult } from "../domain/types.js";
 import {
@@ -30,14 +33,19 @@ async function loadActiveTickers(): Promise<string[]> {
 async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHistoricalPrice[]>> {
   const results = await withRateLimit(
     tickers.map(
-      (ticker) => (): Promise<[string, FmpHistoricalPrice[]]> =>
-        fetchHistoricalPrices(ticker).then((prices) => [ticker, prices])
+      (ticker) => (): Promise<[string, FmpHistoricalPrice[]] | null> =>
+        fetchHistoricalPrices(ticker)
+          .then((prices) => [ticker, prices] as [string, FmpHistoricalPrice[]])
+          .catch((err) => {
+            console.warn(`Skipping ${ticker}: ${(err as Error).message}`);
+            return null;
+          })
     )
   );
 
   const map = new Map<string, FmpHistoricalPrice[]>();
-  for (const [ticker, prices] of results) {
-    map.set(ticker, prices);
+  for (const result of results) {
+    if (result) map.set(result[0], result[1]);
   }
   return map;
 }
@@ -47,14 +55,19 @@ async function fetchFundamentalsForAll(
 ): Promise<Map<string, FmpIncomeStatement[]>> {
   const results = await withRateLimit(
     tickers.map(
-      (ticker) => (): Promise<[string, FmpIncomeStatement[]]> =>
-        fetchIncomeStatements(ticker, 8).then((stmts) => [ticker, stmts])
+      (ticker) => (): Promise<[string, FmpIncomeStatement[]] | null> =>
+        fetchIncomeStatements(ticker, 8)
+          .then((stmts) => [ticker, stmts] as [string, FmpIncomeStatement[]])
+          .catch((err) => {
+            console.warn(`Fundamentals unavailable for ${ticker}: ${(err as Error).message}`);
+            return null;
+          })
     )
   );
 
   const map = new Map<string, FmpIncomeStatement[]>();
-  for (const [ticker, stmts] of results) {
-    map.set(ticker, stmts);
+  for (const result of results) {
+    if (result) map.set(result[0], result[1]);
   }
   return map;
 }
@@ -62,16 +75,24 @@ async function fetchFundamentalsForAll(
 async function fetchProfilesForAll(tickers: string[]): Promise<Map<string, CompanyProfile>> {
   // Primary: Finnhub REST profile. Fallback: Alpha Vantage OVERVIEW.
   const results = await withRateLimit(
-    tickers.map((ticker) => async (): Promise<[string, CompanyProfile | null]> => {
-      const profile = await finnhubClient.profile(ticker);
-      if (profile) return [ticker, profile];
-      return [ticker, await fetchProfileFallback(ticker)];
+    tickers.map((ticker) => async (): Promise<[string, CompanyProfile | null] | null> => {
+      try {
+        const profile = await finnhubClient.profile(ticker);
+        if (profile) return [ticker, profile];
+        return [ticker, await fetchProfileFallback(ticker)];
+      } catch (err) {
+        console.warn(`Profile unavailable for ${ticker}: ${(err as Error).message}`);
+        return null;
+      }
     })
   );
 
   const map = new Map<string, CompanyProfile>();
-  for (const [ticker, profile] of results) {
-    if (profile) map.set(ticker, profile);
+  for (const result of results) {
+    if (result) {
+      const [ticker, profile] = result;
+      if (profile) map.set(ticker, profile);
+    }
   }
   return map;
 }
@@ -167,6 +188,26 @@ export async function runScan(): Promise<StockScanResult[]> {
     fetchProfilesForAll(passingTickers),
   ]);
 
+  // Step 5b: Alpha Vantage fallback for tickers where FMP returned nothing
+  const missingFundamentalTickers = passingTickers.filter(
+    (t) => (fundamentalMap.get(t) ?? []).length === 0
+  );
+  const avFundamentalsMap = new Map<
+    string,
+    { epsGrowthYoY: number | null; revenueGrowthYoY: number | null; roe: number | null }
+  >();
+  if (missingFundamentalTickers.length > 0) {
+    const avResults = await withRateLimit(
+      missingFundamentalTickers.map(
+        (ticker) => async (): Promise<[string, Awaited<ReturnType<typeof fetchFundamentalsFallback>>]> =>
+          [ticker, await fetchFundamentalsFallback(ticker).catch(() => null)]
+      )
+    );
+    for (const [ticker, data] of avResults) {
+      if (data) avFundamentalsMap.set(ticker, data);
+    }
+  }
+
   // Step 6: compute IBD metrics, score, build results
   const scanResults: StockScanResult[] = [];
 
@@ -174,6 +215,14 @@ export async function runScan(): Promise<StockScanResult[]> {
     const minerviniResult = evaluateMinervini(minervini);
     const statements = fundamentalMap.get(minervini.symbol) ?? [];
     const ibdMetrics = computeIbdMetrics(minervini.symbol, statements, minervini);
+
+    // Apply Alpha Vantage overrides when FMP had no data
+    const avData = avFundamentalsMap.get(minervini.symbol);
+    if (avData && statements.length === 0) {
+      ibdMetrics.epsGrowthLatestQuarter = avData.epsGrowthYoY;
+      ibdMetrics.revenueGrowthLatestQuarter = avData.revenueGrowthYoY;
+      ibdMetrics.roe = avData.roe;
+    }
     const ibdResult = evaluateIbd(ibdMetrics);
     const scoreBreakdown = computeScore(minerviniResult, ibdResult, minervini);
     const profile = profileMap.get(minervini.symbol) ?? null;

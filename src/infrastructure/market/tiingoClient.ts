@@ -12,7 +12,11 @@ async function get<T>(path: string, params: Record<string, string> = {}): Promis
   const res = await fetch(url.toString(), {
     headers: { "Content-Type": "application/json" },
   });
-  if (!res.ok) throw new Error(`Tiingo ${path} failed: ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    if (res.status === 404) return [] as unknown as T;
+    if (res.status === 429) throw new Error(`Tiingo rate limit hit — wait before retrying`);
+    throw new Error(`Tiingo ${path} failed: ${res.status} ${res.statusText}`);
+  }
   return res.json() as Promise<T>;
 }
 
