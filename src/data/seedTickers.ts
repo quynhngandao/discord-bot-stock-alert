@@ -1,0 +1,50 @@
+// S&P 500 large-caps + Nasdaq 100 components — used as the initial symbol universe.
+// Update periodically as index compositions change.
+export const SEED_TICKERS: string[] = [
+  // Mega-cap tech
+  "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "GOOG", "TSLA", "AVGO", "ORCL",
+  "AMD", "INTC", "QCOM", "TXN", "ADI", "MCHP", "MU", "AMAT", "LRCX", "KLAC",
+  "SNPS", "CDNS", "ANSS", "MRVL", "ON", "ARM", "SMCI",
+
+  // Software / SaaS
+  "ADBE", "CRM", "INTU", "NOW", "WDAY", "PANW", "CRWD", "ZS", "FTNT", "DDOG",
+  "TEAM", "SNOW", "OKTA", "HUBS", "TTD", "NET", "PLTR",
+
+  // Financials
+  "JPM", "BAC", "WFC", "GS", "MS", "BLK", "SPGI", "MCO", "ICE", "CME",
+  "NDAQ", "MSCI", "CBOE", "AXP", "V", "MA", "PYPL",
+
+  // Healthcare
+  "UNH", "LLY", "JNJ", "ABT", "MRK", "ABBV", "TMO", "DHR", "SYK", "ISRG",
+  "MDT", "BSX", "ELV", "HUM", "CVS", "AMGN", "GILD", "REGN", "VRTX", "BIIB",
+  "MRNA", "ILMN", "DXCM", "IDXX",
+
+  // Consumer / Retail
+  "HD", "LOW", "WMT", "COST", "TGT", "AMZN", "MCD", "SBUX", "NKE", "BKNG",
+  "ABNB", "MAR", "HLT", "YUM", "ORLY", "FAST", "ODFL", "CPRT", "PAYX",
+
+  // Staples / Food & Bev
+  "PG", "KO", "PEP", "MDLZ", "MO", "PM", "GIS", "KHC", "MNST", "KDP",
+
+  // Industrials
+  "CAT", "GE", "ETN", "RTX", "HON", "LMT", "NOC", "BA", "DE", "EMR",
+  "PCAR", "ROP", "CTAS", "CSX", "VRSK",
+
+  // Energy
+  "XOM", "CVX", "COP", "EOG", "SLB", "BKR", "FANG", "PSX", "VLO", "MPC", "CEG",
+
+  // Utilities
+  "NEE", "SO", "DUK", "AEP", "EXC", "XEL",
+
+  // REITs
+  "PLD", "AMT", "EQIX", "CCI", "SPG", "PSA", "O", "DLR", "SBAC",
+
+  // Telecom / Media
+  "TMUS", "VZ", "T", "CMCSA", "NFLX", "DIS", "WBD",
+
+  // Latin America / International (Nasdaq-listed)
+  "MELI", "PDD", "ASML",
+
+  // Other Nasdaq 100
+  "ZM", "ZOOM", "DOCU",
+];

@@ -1,13 +1,36 @@
 import { env } from "../../config/env.js";
 
-const BASE_URL = "https://financialmodelingprep.com/stable";
+// /stable/ requires a paid plan. /api/v3/ is the free-tier API.
+const BASE_URL = "https://financialmodelingprep.com/api/v3";
 
-interface FmpScreenerResult {
+export interface FmpProfile {
   symbol: string;
-  marketCap: number | null;
+  mktCap: number;
+  sector: string;
+  industry: string;
 }
 
-async function get<T>(path: string, params: Record<string, string>): Promise<T> {
+export interface FmpIncomeStatement {
+  date: string;
+  calendarYear: string;
+  period: string;
+  eps: number | null;
+  revenue: number | null;
+  epsgrowth: number | null;
+  revenueGrowth: number | null;
+}
+
+export interface FmpHistoricalPrice {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjClose: number;
+  volume: number;
+}
+
+async function get<T>(path: string, params: Record<string, string> = {}): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
@@ -21,16 +44,39 @@ async function get<T>(path: string, params: Record<string, string>): Promise<T> 
   return res.json() as Promise<T>;
 }
 
-export async function fetchTopUSTickers(limit = 100): Promise<string[]> {
-  const stocks = await get<FmpScreenerResult[]>("/company-screener", {
-    country: "US",
-    isActivelyTrading: "true",
-    limit: String(limit * 3),
-  });
+// Requires FMP paid plan — uncomment when upgrading.
+// export interface FmpStockListItem {
+//   symbol: string;
+//   price: number;
+//   exchangeShortName: string;
+//   type: string;
+// }
+//
+// const US_EXCHANGES = new Set(["NYSE", "NASDAQ", "AMEX"]);
+//
+// export async function fetchTopUSTickers(limit = 100): Promise<string[]> {
+//   const stocks = await get<FmpStockListItem[]>("/stock-list");
+//   return stocks
+//     .filter((s) => US_EXCHANGES.has(s.exchangeShortName) && s.type === "stock" && s.price >= 5)
+//     .slice(0, limit)
+//     .map((s) => s.symbol);
+// }
 
-  return stocks
-    .filter((s): boolean => Boolean(s.symbol))
-    .sort((a, b): number => (b.marketCap ?? 0) - (a.marketCap ?? 0))
-    .slice(0, limit)
-    .map((s): string => s.symbol);
+export async function fetchProfile(symbol: string): Promise<FmpProfile | null> {
+  const results = await get<FmpProfile[]>(`/profile/${symbol}`);
+  return results[0] ?? null;
+}
+
+export async function fetchIncomeStatements(symbol: string, limit = 8): Promise<FmpIncomeStatement[]> {
+  return get<FmpIncomeStatement[]>(`/income-statement/${symbol}`, {
+    period: "quarter",
+    limit: String(limit),
+  });
+}
+
+export async function fetchHistoricalPrices(symbol: string): Promise<FmpHistoricalPrice[]> {
+  const res = await get<{ historical: FmpHistoricalPrice[] }>(
+    `/historical-price-full/${symbol}`
+  );
+  return res.historical ?? [];
 }
