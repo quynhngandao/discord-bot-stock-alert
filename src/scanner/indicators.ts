@@ -15,6 +15,13 @@ function sma(values: number[], period: number, offset: number = 0): number | nul
   return avg(values.slice(offset, offset + period));
 }
 
+function computeReturn(closes: number[], bars: number): number | null {
+  if (closes.length <= bars) return null;
+  const latest = closes[0]!;
+  const prior = closes[bars]!;
+  return prior > 0 ? ((latest - prior) / prior) * 100 : null;
+}
+
 // Ensure newest-first order regardless of API response ordering
 function sortNewestFirst(prices: FmpHistoricalPrice[]): FmpHistoricalPrice[] {
   return [...prices].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -38,9 +45,16 @@ export function computeMinerviniMetrics(
   const sma50 = sma(closes, 50);
   const sma150 = sma(closes, 150);
   const sma200 = sma(closes, 200);
+  const sma150OneMonthAgo = sma(closes, 150, TRADING_DAYS_PER_MONTH);
   const sma200OneMonthAgo = sma(closes, 200, TRADING_DAYS_PER_MONTH);
 
-  if (sma50 === null || sma150 === null || sma200 === null || sma200OneMonthAgo === null) {
+  if (
+    sma50 === null ||
+    sma150 === null ||
+    sma200 === null ||
+    sma150OneMonthAgo === null ||
+    sma200OneMonthAgo === null
+  ) {
     return null;
   }
 
@@ -50,6 +64,7 @@ export function computeMinerviniMetrics(
 
   const close = latestPrice.close;
   const averageVolume50 = avg(volumes.slice(0, 50));
+  const volumeRatioPrevDay = averageVolume50 > 0 ? (volumes[0] ?? 0) / averageVolume50 : 0;
 
   return {
     symbol,
@@ -57,13 +72,19 @@ export function computeMinerviniMetrics(
     sma50,
     sma150,
     sma200,
+    sma150OneMonthAgo,
     sma200OneMonthAgo,
     high52Week,
     low52Week,
     percentFromHigh52Week: ((high52Week - close) / high52Week) * 100,
     percentAboveLow52Week: ((close - low52Week) / low52Week) * 100,
     averageVolume50,
-    relativeStrengthRank: null, // assigned cross-sectionally in orchestrator
+    volumeRatioPrevDay,
+    return63d: computeReturn(closes, 63),
+    return21d: computeReturn(closes, 21),
+    spy63dReturn: null,
+    spy21dReturn: null,
+    relativeStrengthRank: null,
   };
 }
 
@@ -98,6 +119,18 @@ export function assignRelativeStrengthRanks(
   }
 }
 
+// Extracts SPY's 63-day and 21-day returns from its historical prices.
+export function computeSpyReturns(
+  spyPrices: FmpHistoricalPrice[]
+): { return63d: number | null; return21d: number | null } {
+  const sorted = sortNewestFirst(spyPrices);
+  const closes = sorted.map((p) => p.close);
+  return {
+    return63d: computeReturn(closes, 63),
+    return21d: computeReturn(closes, 21),
+  };
+}
+
 function computeYoYGrowth(
   latest: FmpIncomeStatement,
   all: FmpIncomeStatement[]
@@ -119,11 +152,27 @@ function computeYoYGrowth(
   return { epsGrowth, revenueGrowth };
 }
 
+function computeAccumulationRatio(prices: FmpHistoricalPrice[], lookback = 50): number | null {
+  const sorted = sortNewestFirst(prices);
+  if (sorted.length < 2) return null;
+  const window = sorted.slice(0, Math.min(lookback + 1, sorted.length));
+  let upVolume = 0;
+  let downVolume = 0;
+  for (let i = 0; i < window.length - 1; i++) {
+    const current = window[i]!;
+    const prev = window[i + 1]!;
+    if (current.close > prev.close) upVolume += current.volume;
+    else if (current.close < prev.close) downVolume += current.volume;
+  }
+  return downVolume > 0 ? upVolume / downVolume : null;
+}
+
 // statements should be sorted newest-first and include at least 5 quarters for YoY coverage
 export function computeIbdMetrics(
   symbol: string,
   statements: FmpIncomeStatement[],
-  minervini: MinerviniMetrics
+  minervini: MinerviniMetrics,
+  prices: FmpHistoricalPrice[]
 ): IbdApproxMetrics {
   const quarterly = statements.filter(
     (s: FmpIncomeStatement): boolean =>
@@ -142,9 +191,20 @@ export function computeIbdMetrics(
     epsGrowthPreviousQuarter: prevGrowth?.epsGrowth ?? null,
     revenueGrowthLatestQuarter: latestGrowth?.revenueGrowth ?? null,
     revenueGrowthPreviousQuarter: prevGrowth?.revenueGrowth ?? null,
-    annualEpsGrowth3Y: null, // requires annual statements — add later
-    roe: null, // not in current FMP fields — add later
+    annualEpsGrowth3Y: null, // requires annual statements — add when Polygon annual fetch is implemented
+    annualRevenueGrowth3Y: null,
+    roe: null, // assigned from roeMap in orchestrator
     relativeStrengthRank: minervini.relativeStrengthRank,
     averageVolume50: minervini.averageVolume50,
+    dollarVolume50: minervini.close * minervini.averageVolume50,
+    accumulationRatio: computeAccumulationRatio(prices),
+    epsAcceleration:
+      latestGrowth?.epsGrowth != null && prevGrowth?.epsGrowth != null
+        ? latestGrowth.epsGrowth > prevGrowth.epsGrowth
+        : null,
+    revenueAcceleration:
+      latestGrowth?.revenueGrowth != null && prevGrowth?.revenueGrowth != null
+        ? latestGrowth.revenueGrowth > prevGrowth.revenueGrowth
+        : null,
   };
 }

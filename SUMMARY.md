@@ -122,31 +122,27 @@ Just one app with clear modules.
 | Provider | Role | When called |
 |---|---|---|
 | Tiingo | Daily OHLCV — powers all Minervini indicators | Every scan, all symbols |
-| Finnhub | Profile, market cap, industry, real-time quotes, news WebSocket | Post-Minervini filter + streaming |
-| FMP | Quarterly EPS and revenue for IBD approximation | Post-Minervini filter only |
-| Alpha Vantage | Fallback for sector, ROE, YoY growth | Only when Finnhub returns null |
+| Polygon | Quarterly EPS/revenue + TTM ROE | Post-Minervini filter only |
+| Finnhub | Profile, market cap, sector, industry | Post-Minervini filter only |
 
 ### API limits (free tier)
 
 | Provider | Limit |
 |---|---|
-| Tiingo | 500 calls/day |
-| Finnhub | 30 calls/second |
-| FMP | 250 calls/day |
-| Alpha Vantage | 25 calls/day |
+| Tiingo | 1,000 calls/day, 50/hour |
+| Polygon | 5 calls/min |
+| Finnhub | ~60 calls/min |
 | Neon | 512 MB storage |
 
 **Call budget per daily scan (20 symbols, ~10 Minervini survivors):**
 
 | Data | Source | Calls |
 |---|---|---|
-| Daily OHLCV history | Tiingo | 20 |
+| Daily OHLCV history | Tiingo | 21 |
 | Profile + market cap | Finnhub | ~10 (survivors only) |
-| Quarterly income statements | FMP | ~10 (survivors only) |
-| Sector/ROE fallback | Alpha Vantage | 0–5 (only on miss) |
-| News | Finnhub WebSocket | 0 (streaming) |
+| Quarterly income statements + ROE | Polygon | ~10 (survivors only) |
 
-Total: ~40–45 calls per scan. Well within all free tier limits.
+Total: ~41 calls per scan. Well within all free-tier limits.
 
 ## 3 Core components
 
@@ -399,24 +395,14 @@ That makes iteration way easier.
 
 Use weighted scoring instead of only hard filters.
 
-Example:
-
 ```ts
 const weights = {
-  trend: 40,
-  leadership: 30,
-  setup: 20,
-  market: 10
+  trend: 50,      // proportional Minervini rule pass rate
+  rs: 20,         // beats SPY 63d = 15pts, 21d = 5pts
+  proximity: 15,  // distance from 52-week high
+  volume: 15,     // avg vol, dollar vol, prior-day ratio
 };
 ```
-
-Then compute subtotal per category.
-
-Why this matters:
-
-- one missing fundamental datapoint will not kill a good chart
-- can tune signal quality later
-- much easier to backtest and adjust
 
 ## 10 Alert engine logic
 
@@ -616,13 +602,21 @@ Where all thresholds live:
 
 ```ts
 export const scannerConfig = {
-  minPrice: 10,
-  minAvgVolume: 300000,
-  minDollarVolume: 5000000,
-  maxDistanceFromHigh: 0.15,
-  minScoreForWatchlist: 65,
-  minScoreForPriority: 80,
-  breakoutVolumeRatio: 1.5
+  minPrice: 5,
+  minAvgVolume: 1_000_000,
+  minAvgDollarVolume: 10_000_000,
+  minervini: {
+    minAvgVolume50: 500_000,
+    minPercentAboveLow52Week: 30,
+    maxPercentFromHigh52Week: 25,
+    minRsRank: 70,
+    requireCloseAboveSma50: true,
+  },
+  alertThresholds: { minScoreForWatchlist: 70, minScoreForPriority: 85 },
+  highPriority: { minVolumeRatio: 1.5, maxPercentFromHigh: 10 },
+  sameTickerCooldownTradingDays: 1,
+  maxAlertsPerTickerPerDay: 1,
+  maxAlertsPerScan: 10,
 };
 ```
 

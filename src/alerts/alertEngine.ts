@@ -4,22 +4,15 @@ import { sendScanAlert } from "../infrastructure/discord/scanAlertAdapter.js";
 import { recordAlert, saveScanSnapshot, wasAlertedToday } from "./dedupeService.js";
 
 const { minScoreForWatchlist, minScoreForPriority } = scannerConfig.alertThresholds;
-const { minAlertDataCompletenessScore } = scannerConfig.dataQuality;
+const { minVolumeRatio, maxPercentFromHigh } = scannerConfig.highPriority;
 
 export async function processResults(results: StockScanResult[]): Promise<void> {
   let sent = 0;
   let skipped = 0;
 
   for (const result of results) {
-    // Must pass all available rules (lenient: missing fields are skipped, not failed)
-    // Require paid Finnhub plan for real-time news-based alerts.
-    if (!result.passesAvailableRules) {
-      skipped++;
-      continue;
-    }
-
-    // Data quality gate: too many missing fields means unreliable signal
-    if (result.dataCompletenessScore < minAlertDataCompletenessScore) {
+    // Must pass all Minervini rules (lenient: missing SPY data is skipped, not failed)
+    if (!result.passesMinervini) {
       skipped++;
       continue;
     }
@@ -36,7 +29,12 @@ export async function processResults(results: StockScanResult[]): Promise<void> 
       continue;
     }
 
-    const priority = result.score >= minScoreForPriority ? "HIGH PRIORITY" : "WATCHLIST";
+    const isHighPriority =
+      result.score >= minScoreForPriority &&
+      (result.volumeRatioPrevDay >= minVolumeRatio ||
+        result.percentFromHigh52Week <= maxPercentFromHigh);
+
+    const priority = isHighPriority ? "HIGH PRIORITY" : "WATCHLIST";
 
     try {
       await sendScanAlert(result, result.score, priority);

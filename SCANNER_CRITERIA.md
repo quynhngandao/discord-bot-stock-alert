@@ -1,175 +1,199 @@
 # Minervini and IBD Scanner Criteria
 
-This is a practical hybrid stock scanner combining Mark Minervini-style technical filters with IBD (Investor's Business Daily) / CAN SLIM-style growth and leadership filters.
+## Mode
 
-> This is a screening framework, not investment advice. The scanner is meant to identify candidates for deeper chart and fundamental review.
+`EOD_WATCHLIST_ONLY` — this scanner uses completed daily candles only.
 
----
+It does **not** use live quotes, intraday candles, bid/ask spreads, VWAP reclaims, 5-minute breakouts, real-time relative volume, account data, broker integrations, order execution, position sizing, or buy/sell commands.
 
-## 1. Minervini Trend Template - Technical Base Filter
+This file defines a practical **MVP scanner** inspired by Mark Minervini-style trend filtering and IBD/CAN SLIM-style leadership filtering, but simplified for a free-tier API and a small curated stock universe.
 
-Use this first to eliminate weak charts.
-
-| Filter | Criteria |
-|---|---|
-| Price trend | Price > 50-day simple moving average (SMA), 150-day SMA, and 200-day SMA |
-| Moving average alignment | 50-day SMA > 150-day SMA > 200-day SMA |
-| Long-term trend | 200-day SMA trending up for at least 1 month |
-| 52-week position | Price is within 25% of 52-week high |
-| Avoid broken stocks | Price is at least 25% above 52-week low |
-| Relative strength | Relative Strength (RS) Rating or equivalent > 70, preferably > 80 |
-| Liquidity | Average daily dollar volume high enough for your position size |
-
-Common Minervini-style rules include price above the 50-day, 150-day, and 200-day moving averages; the 50-day above the 150-day and 200-day; the 150-day above the 200-day; a rising 200-day; price near the 52-week high; price well above the 52-week low; and strong relative strength.
+> This is a screening framework, not investment advice. The scanner identifies watchlist candidates for further review.
 
 ---
 
-## 2. IBD / CAN SLIM-Style Fundamental Filter
+## 1. Data assumptions
 
-After the technical filter, add growth and quality criteria.
+The MVP scanner only needs daily OHLCV data.
 
-| Filter | Criteria |
+Required fields per symbol:
+
+| Field | Required | Notes |
+|---|---:|---|
+| Date | Yes | Completed trading day only |
+| Open | Yes | Daily open |
+| High | Yes | Daily high |
+| Low | Yes | Daily low |
+| Close | Yes | Daily close |
+| Volume | Yes | Daily volume |
+
+Optional benchmark data:
+
+| Symbol | Purpose |
 |---|---|
-| Current earnings | Latest quarterly earnings per share (EPS) growth >= 25% year-over-year |
-| Sales growth | Latest quarterly revenue growth >= 20% year-over-year |
-| Annual earnings | Annual EPS growth strong over the last 3 years, ideally >= 25% |
-| Return on equity | Return on equity (ROE) >= 17%, if available |
-| New catalyst | New product, service, market, management, industry shift, or new price high |
-| Leader filter | Stock is a leader in a leading industry group |
-| Institutional support | Increasing fund ownership or positive accumulation/distribution |
-| Market direction | Only take aggressive breakouts when the general market is in an uptrend |
+| SPY | Used as a simple market-relative strength benchmark |
 
-CAN SLIM stands for:
+Do **not** use the current unfinished trading day in the daily scanner.
 
-- **C** - Current earnings
-- **A** - Annual earnings
-- **N** - New product, service, management, price high, or catalyst
-- **S** - Supply and demand
-- **L** - Leader or laggard
-- **I** - Institutional sponsorship
-- **M** - Market direction
-
-IBD also emphasizes proprietary ratings such as EPS Rating, Relative Strength Rating, Industry Group Relative Strength, and Composite Rating.
-
----
-
-## 3. Suggested Scanner Settings
-
-### Conservative Version
-
-Use this when you want fewer, higher-quality names.
-
-| Category | Criteria |
-|---|---|
-| Price | Price > $10 |
-| Liquidity | Average daily volume > 500,000 shares |
-| Dollar volume | Price x average volume > $20M |
-| Trend | Price > 50-day, 150-day, 200-day SMA |
-| SMA structure | 50-day SMA > 150-day SMA > 200-day SMA |
-| 200-day SMA | Rising for at least 20 trading days |
-| 52-week high distance | Within 15% of 52-week high |
-| 52-week low distance | At least 50% above 52-week low |
-| Relative strength | RS Rating > 80, or 6-month price performance in top 20% |
-| EPS growth | Latest quarter EPS growth > 25% |
-| Revenue growth | Latest quarter revenue growth > 20% |
-| Composite score | IBD Composite Rating > 90, if available |
-
-### Looser Version
-
-Use this when market breadth is weak and the conservative scan returns too few stocks.
-
-| Category | Criteria |
-|---|---|
-| Price | Price > $5 |
-| Liquidity | Average daily volume > 200,000 shares |
-| Trend | Price > 150-day and 200-day SMA |
-| SMA structure | 150-day SMA > 200-day SMA |
-| 52-week high distance | Within 25% of 52-week high |
-| Relative strength | RS Rating > 70 |
-| EPS growth | Latest quarter EPS growth > 15% |
-| Revenue growth | Latest quarter revenue growth > 10% |
-
----
-
-## 4. Breakout / Setup Filter
-
-The scanner only finds candidates. The setup still matters.
-
-| Setup Trait | Preferred Condition |
-|---|---|
-| Base | Cup-with-handle, flat base, double bottom, high-tight flag, or volatility contraction pattern (VCP) |
-| Volume dry-up | Lower volume near the right side of the base |
-| Breakout volume | Breakout volume at least 40% above average |
-| Relative strength line | Relative strength line near or at a new high before price breaks out |
-| Pivot proximity | Price within 0% to 5% of pivot, not already extended |
-| Risk | Stop can be placed within roughly 5% to 8% below entry |
-
----
-
-## 5. Pseudocode Scanner Logic
+Recommended schedule:
 
 ```text
-Universe:
-  US stocks only
-  price > 10
-  avg_volume_50d > 500000
-  avg_dollar_volume_50d > 20000000
+Run time: 8:25 AM Central, weekdays
+Data used: previous completed trading day
+Output: WATCHLIST or HIGH_PRIORITY_WATCHLIST
+```
 
-Minervini technical filters:
-  close > sma_50
-  close > sma_150
-  close > sma_200
-  sma_50 > sma_150
-  sma_150 > sma_200
-  sma_200 > sma_200[20 trading days ago]
-  close >= 1.25 * 52_week_low
-  close >= 0.85 * 52_week_high
-  relative_strength_rank >= 80
+Example:
 
-IBD-style growth filters:
-  latest_quarter_eps_growth >= 25
-  latest_quarter_sales_growth >= 20
-  annual_eps_growth_3y >= 20 or 25
-  roe >= 17
-  composite_rating >= 90 if available
-  eps_rating >= 80 if available
-  industry_group_rank in top 40% if available
-
-Setup filters:
-  price within 5% of pivot
-  volume contracting in base
-  relative_strength_line near new high
+```text
+Monday morning scan uses Friday's completed daily candle.
+Tuesday morning scan uses Monday's completed daily candle.
 ```
 
 ---
 
-## 6. Ranking Formula
+## 2. What v1 intentionally does not use
 
-After the scan, rank results instead of treating all hits equally.
+To keep the MVP minimal and free-tier friendly, v1 does not require:
+
+- IBD proprietary ratings
+- Composite Rating
+- EPS Rating
+- RS Rating
+- Accumulation/Distribution Rating
+- Industry Group Relative Strength
+- Quarterly EPS growth
+- Quarterly revenue growth
+- ROE
+- Institutional ownership
+- Earnings calendar checks
+- Halt status checks
+- Bid/ask spread checks
+- Intraday VWAP
+- 5-minute candles
+- Opening range levels
+- Premarket levels
+- Real-time relative volume
+- Live news catalysts
+
+Those can be added later, but they are not required for the first working bot.
+
+---
+
+## 3. Universe filter
+
+Start with a curated list of roughly **20–200 liquid U.S. stocks**.
+
+Required universe filters:
+
+| Filter | Requirement |
+|---|---:|
+| Price | Close >= $5 |
+| Average volume | 50-day average volume >= 1,000,000 shares |
+| Dollar volume | 50-day avg close × 50-day avg volume >= $10,000,000 |
+| History | At least 220 daily candles available |
+
+---
+
+## 4. Minervini-lite trend template
+
+Use this as the main technical base filter. All must pass.
+
+| Filter | Requirement |
+|---|---:|
+| Price above short-term trend | Close > 50-day SMA |
+| Price above intermediate trend | Close > 150-day SMA |
+| Price above long-term trend | Close > 200-day SMA |
+| Intermediate trend rising | 150-day SMA > 150-day SMA from 20 trading days ago |
+| Long-term trend rising | 200-day SMA > 200-day SMA from 20 trading days ago |
+| Short vs intermediate alignment | 50-day SMA > 150-day SMA |
+| Short vs long alignment | 50-day SMA > 200-day SMA |
+| 52-week high proximity | Close >= 75% of 52-week high (within 25%) |
+| Avoid broken stocks | Close >= 130% of 52-week low (at least 30% above) |
+| RS rank | Cross-sectional 12-month return percentile >= 70 |
+| Volume | 50-day average volume >= 500,000 shares |
+
+---
+
+## 5. IBD/CAN SLIM-lite enrichment
+
+Traditional IBD/CAN SLIM scanning uses earnings, sales growth, industry leadership, institutional sponsorship, and proprietary IBD ratings. For the free-tier MVP, fundamentals are tracked as enrichment only — a null value never blocks an alert.
+
+| Rule | Threshold |
+|---|---:|
+| EPS growth latest quarter (YoY) | >= 25% |
+| EPS growth previous quarter (YoY) | >= 25% |
+| Revenue growth latest quarter (YoY) | >= 20% |
+| Annual EPS growth 3-year | >= 25% |
+| ROE | >= 17% |
+| RS rank (IBD threshold) | >= 80 |
+| Dollar volume 50-day | >= $10,000,000 |
+
+Additional tracked fields (not pass/fail gates): `accumulationRatio`, `epsAcceleration`, `revenueAcceleration`.
+
+---
+
+## 6. Required v1 pass/fail rules
+
+A stock passes the Minervini filter only when all of the following are true:
 
 ```text
-Score =
-  30% relative strength
-  20% EPS growth
-  15% revenue growth
-  15% distance from 52-week high
-  10% industry group strength
-  10% accumulation / volume quality
+close >= 5
+avg_volume_50d >= 500,000
+history_count >= 220
+
+close > sma_50
+close > sma_150
+close > sma_200
+sma_150 > sma_150_20_days_ago
+sma_200 > sma_200_20_days_ago
+sma_50 > sma_150
+sma_50 > sma_200
+
+close >= 0.75 * high_52w    (within 25% of 52-week high)
+close >= 1.30 * low_52w     (at least 30% above 52-week low)
+
+rs_rank >= 70               (cross-sectional 12-month return percentile)
 ```
 
 ---
 
-## 7. Main Trap
+## 7. Scoring model
 
-The weakest part of this kind of scanner is **over-filtering**.
+After the pass/fail scan, rank results with a 0–100 score. The score is for prioritization only, not a trading signal.
 
-A stock can fail one fundamental criterion and still become a major winner, especially newer companies with explosive revenue but inconsistent earnings. On the other hand, a stock can pass every filter and still be extended, late-stage, or breaking out in a weak market.
+| Category | Max points | How earned |
+|---|---:|---|
+| Trend strength | 50 | Proportional: # Minervini rules passed / total rules |
+| Relative strength vs SPY | 20 | 63d outperform = 15 pts; 21d outperform = 5 pts |
+| 52-week high proximity | 15 | ≤10% from high = 15; ≤15% = 10; ≤25% = 0 |
+| Volume / liquidity | 15 | Avg vol ≥1M = 5; dollar vol ≥$10M = 5; vol ratio ≥1.5 = 5 |
 
-The scanner should answer:
+---
 
-> What deserves chart review?
+## 8. Alert thresholds
 
-It should not answer:
+| Alert type | Requirement |
+|---|---|
+| `WATCHLIST` | Passes Minervini filter and score >= 70 |
+| `HIGH_PRIORITY` | Passes WATCHLIST, score >= 85, and (vol ratio >= 1.5 OR within 10% of 52-week high) |
 
-> What should I buy?
+See [ALERT_SPECS.md](./ALERT_SPECS.md) for the full alert spec including embed format and cooldowns.
 
+---
+
+## 9. Future upgrades
+
+Add these only after v1 is stable.
+
+### v2 — fundamentals (annual data)
+
+- Annual EPS growth via Polygon annual financials endpoint
+- Industry group relative strength
+- Accumulation/Distribution rating approximation
+- Earnings date blocking
+
+### v3 — intraday alerts
+
+- Intraday VWAP, 5-minute breakout, opening range breaks
+- Real-time relative volume, halt checks, news volume spikes

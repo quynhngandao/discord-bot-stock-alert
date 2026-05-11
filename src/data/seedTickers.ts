@@ -1,12 +1,10 @@
-// Mega-cap tech — used for real-time news alerts (Finnhub paid plan required).
-export const MEGA_CAP_TECH_TICKERS: string[] = [
+export const BIG_TECH_TICKERS: string[] = [
   "AAPL",
   "MSFT",
   "NVDA",
   "AMZN",
   "META",
   "GOOGL",
-  "GOOG",
   "TSLA",
   "AVGO",
   "ORCL",
@@ -15,212 +13,139 @@ export const MEGA_CAP_TECH_TICKERS: string[] = [
   "QCOM",
   "TXN",
   "ADI",
-  "MCHP",
   "MU",
   "AMAT",
   "LRCX",
   "KLAC",
-  "SNPS",
-  "CDNS",
-  "ANSS",
-  "MRVL",
-  "ON",
+  "ASML",
   "ARM",
-  "SMCI",
-];
-
-// S&P 500 large-caps + Nasdaq 100 components — used as the initial symbol universe.
-// Update periodically as index compositions change.
-export const SEED_TICKERS: string[] = [
-  // Mega-cap tech
-  "AAPL",
-  "MSFT",
-  "NVDA",
-  "AMZN",
-  "META",
-  "GOOGL",
-  "GOOG",
-  "TSLA",
-  "AVGO",
-  "ORCL",
-  "AMD",
-  "INTC",
-  "QCOM",
-  "TXN",
-  "ADI",
-  "MCHP",
-  "MU",
-  "AMAT",
-  "LRCX",
-  "KLAC",
-  "SNPS",
-  "CDNS",
-  "ANSS",
   "MRVL",
-  "ON",
-  "ARM",
   "SMCI",
-
-  // Software / SaaS
-  "ADBE",
-  "CRM",
-  "INTU",
-  "NOW",
-  "WDAY",
   "PANW",
   "CRWD",
-  "ZS",
-  "FTNT",
-  "DDOG",
-  "TEAM",
-  "SNOW",
-  "OKTA",
-  "HUBS",
-  "TTD",
-  "NET",
   "PLTR",
-
-  // Financials
-  "JPM",
-  "BAC",
-  "WFC",
-  "GS",
-  "MS",
-  "BLK",
-  "SPGI",
-  "MCO",
-  "ICE",
-  "CME",
-  "NDAQ",
-  "MSCI",
-  "CBOE",
-  "AXP",
-  "V",
-  "MA",
-  "PYPL",
-
-  // Healthcare
-  "UNH",
-  "LLY",
-  "JNJ",
-  "ABT",
-  "MRK",
-  "ABBV",
-  "TMO",
-  "DHR",
-  "SYK",
-  "ISRG",
-  "MDT",
-  "BSX",
-  "ELV",
-  "HUM",
-  "CVS",
-  "AMGN",
-  "GILD",
-  "REGN",
-  "VRTX",
-  "BIIB",
-  "MRNA",
-  "ILMN",
-  "DXCM",
-  "IDXX",
-
-  // Consumer / Retail
-  "HD",
-  "LOW",
-  "WMT",
-  "COST",
-  "TGT",
-  "MCD",
-  "SBUX",
-  "NKE",
-  "BKNG",
-  "ABNB",
-  "MAR",
-  "HLT",
-  "YUM",
-  "ORLY",
-  "FAST",
-  "ODFL",
-  "CPRT",
-  "PAYX",
-
-  // Staples / Food & Bev
-  "PG",
-  "KO",
-  "PEP",
-  "MDLZ",
-  "MO",
-  "PM",
-  "GIS",
-  "KHC",
-  "MNST",
-  "KDP",
-
-  // Industrials
-  "CAT",
-  "GE",
-  "ETN",
-  "RTX",
-  "HON",
-  "LMT",
-  "NOC",
-  "BA",
-  "DE",
-  "EMR",
-  "PCAR",
-  "ROP",
-  "CTAS",
-  "CSX",
-  "VRSK",
-
-  // Energy
-  "XOM",
-  "CVX",
-  "COP",
-  "EOG",
-  "SLB",
-  "BKR",
-  "FANG",
-  "PSX",
-  "VLO",
-  "MPC",
-  "CEG",
-
-  // Utilities
-  "NEE",
-  "SO",
-  "DUK",
-  "AEP",
-  "EXC",
-  "XEL",
-
-  // REITs
-  "PLD",
-  "AMT",
-  "EQIX",
-  "CCI",
-  "SPG",
-  "PSA",
-  "O",
-  "DLR",
-  "SBAC",
-
-  // Telecom / Media
-  "TMUS",
-  "VZ",
-  "T",
-  "CMCSA",
+  "NOW",
+  "CRM",
+  "ADBE",
+  "INTU",
+  "SNPS",
+  "CDNS",
   "NFLX",
-  "DIS",
-  "WBD",
-
-  // Latin America / International (Nasdaq-listed)
-  "MELI",
-  "PDD",
-  "ASML",
-
-  // Other Nasdaq 100
-  "ZM",
-  "DOCU",
 ];
+
+// Traditional sectors capped at top 3 each.
+// These are the more stable, liquid, high-news-value names.
+export const SECTOR_TOP_3_TICKERS = {
+  financials: ["JPM", "V", "MA"],
+  healthcare: ["LLY", "UNH", "JNJ"],
+  consumerRetail: ["COST", "WMT", "HD"],
+  staplesFoodBev: ["PG", "KO", "PEP"],
+  industrialsDefense: ["CAT", "GE", "RTX"],
+  energy: ["XOM", "CVX", "COP"],
+  utilities: ["NEE", "SO", "DUK"],
+  reitsInfrastructure: ["PLD", "EQIX", "AMT"],
+  telecomMedia: ["TMUS", "DIS", "CMCSA"],
+  internationalLeaders: ["MELI", "PDD", "TSM"],
+} as const;
+
+export const AI_SPECULATIVE_TICKERS: string[] = [
+  // Quantum computing
+  "IONQ",
+  "QBTS",
+  "RGTI",
+  "QUBT",
+
+  // AI power / nuclear / grid / cooling
+  "BE",
+  "VRT",
+  "OKLO",
+  "SMR",
+  "GEV",
+  "PWR",
+  "VST",
+  "CEG",
+  "ETN",
+
+  // AI optical networking / data-center plumbing
+  "LITE",
+  "AAOI",
+  "CRDO",
+  "GLW",
+  "COHR",
+  "FN",
+  "ALAB",
+
+  // AI memory / storage
+  "SNDK",
+  "WDC",
+  "STX",
+
+  // AI cloud / compute / infrastructure
+  "CRWV",
+  "NBIS",
+  "IREN",
+  "DY",
+  "DELL",
+  "HPE",
+
+  // AI software / robotics / applied AI
+  "APP",
+  "SOUN",
+  "BBAI",
+  "AI",
+  "SERV",
+  "RXRX",
+  "TEM",
+  "UPST",
+  "PATH",
+];
+
+export const SECTOR_LEADER_TICKERS: string[] = Object.values(
+  SECTOR_TOP_3_TICKERS
+).flat();
+
+export const ALERT_TICKERS_100: string[] = Array.from(
+  new Set([
+    ...BIG_TECH_TICKERS,
+    ...SECTOR_LEADER_TICKERS,
+    ...AI_SPECULATIVE_TICKERS,
+  ])
+);
+
+if (ALERT_TICKERS_100.length !== 100) {
+  throw new Error(
+    `Expected 100 alert tickers, got ${ALERT_TICKERS_100.length}`
+  );
+}
+
+export const SEED_TICKERS = ALERT_TICKERS_100;
+
+export const ALERT_CONFIG = {
+  bigTech: {
+    minNewsScore: 0.65,
+    minRelativeVolume: 1.3,
+    minPriceMovePct: 1.0,
+    cooldownMinutes: 30,
+  },
+  sectorLeaders: {
+    minNewsScore: 0.7,
+    minRelativeVolume: 1.4,
+    minPriceMovePct: 1.5,
+    cooldownMinutes: 45,
+  },
+  aiSpeculative: {
+    minNewsScore: 0.78,
+    minRelativeVolume: 1.8,
+    minPriceMovePct: 4.0,
+    cooldownMinutes: 45,
+  },
+};
+
+export function getTickerAlertTier(
+  ticker: string
+): "bigTech" | "sectorLeaders" | "aiSpeculative" | "unknown" {
+  if (BIG_TECH_TICKERS.includes(ticker)) return "bigTech";
+  if (AI_SPECULATIVE_TICKERS.includes(ticker)) return "aiSpeculative";
+  if (SECTOR_LEADER_TICKERS.includes(ticker)) return "sectorLeaders";
+  return "unknown";
+}

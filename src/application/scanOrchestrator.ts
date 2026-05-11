@@ -2,18 +2,14 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
 import type { FmpHistoricalPrice, FmpIncomeStatement } from "../infrastructure/market/fmpClient.js";
-import { fetchIncomeStatements } from "../infrastructure/market/fmpClient.js";
+import { fetchHistoricalPrices } from "../infrastructure/market/tiingoClient.js";
+import { fetchFinancials } from "../infrastructure/market/polygonClient.js";
 import {
   getCachedFundamentals,
   setCachedFundamentals,
 } from "../infrastructure/db/fundamentalsCacheService.js";
-import { fetchHistoricalPrices } from "../infrastructure/market/tiingoClient.js";
 import { finnhubClient } from "../infrastructure/market/finnhubClient.js";
 import type { CompanyProfile } from "../infrastructure/market/finnhubClient.js";
-import {
-  fetchFundamentalsFallback,
-  fetchProfileFallback,
-} from "../infrastructure/market/alphaVantageClient.js";
 import { withRateLimit } from "../infrastructure/market/rateLimiter.js";
 import type { MinerviniMetrics, ScoringBreakdown, StockScanResult } from "../domain/types.js";
 import {
@@ -21,6 +17,7 @@ import {
   computeIbdMetrics,
   computeMinerviniMetrics,
   computeRsScore,
+  computeSpyReturns,
 } from "../scanner/indicators.js";
 import { evaluateIbd, evaluateMinervini } from "../scanner/ruleEngine.js";
 import type { RuleSetResult } from "../scanner/ruleEngine.js";
@@ -28,8 +25,8 @@ import { computeScore } from "../scanner/scoring.js";
 import { processResults } from "../alerts/alertEngine.js";
 import { sendScanSkipped } from "../infrastructure/discord/scanAlertAdapter.js";
 
-const SCHEDULED_SCAN_LIMIT = 25; // Increase to 167 slowly due to API rate limits. 
-// Prioritize top of the list (sorted by market cap) for more timely alerts, and rotate periodically.
+const SCHEDULED_SCAN_LIMIT = 25;
+// Increase limit as confidence grows. Sorted by id = market-cap priority (seed order).
 export const MANUAL_SCAN_LIMIT = 10;
 
 async function loadActiveTickers(limit: number): Promise<string[]> {
@@ -38,7 +35,9 @@ async function loadActiveTickers(limit: number): Promise<string[]> {
     .from(symbols)
     .where(eq(symbols.isActive, true))
     .orderBy(asc(symbols.id));
-  return rows.map((r) => r.ticker).slice(0, limit);
+  const tickers = rows.map((r) => r.ticker).slice(0, limit);
+  // Always include SPY as benchmark — deduplicate if already in list
+  return Array.from(new Set(["SPY", ...tickers]));
 }
 
 async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHistoricalPrice[]>> {
@@ -51,7 +50,8 @@ async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHist
             console.warn(`[Tiingo] Skipping ${ticker}: ${(err as Error).message}`);
             return null;
           })
-    )
+    ),
+    500
   );
 
   const map = new Map<string, FmpHistoricalPrice[]>();
@@ -63,55 +63,61 @@ async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHist
 
 async function fetchFundamentalsForAll(
   tickers: string[]
-): Promise<Map<string, FmpIncomeStatement[]>> {
-  const map = new Map<string, FmpIncomeStatement[]>();
+): Promise<{ statementsMap: Map<string, FmpIncomeStatement[]>; roeMap: Map<string, number> }> {
+  const statementsMap = new Map<string, FmpIncomeStatement[]>();
+  const roeMap = new Map<string, number>();
 
   const cacheMisses: string[] = [];
   for (const ticker of tickers) {
     const cached = await getCachedFundamentals(ticker);
     if (cached) {
-      map.set(ticker, cached);
+      statementsMap.set(ticker, cached);
     } else {
       cacheMisses.push(ticker);
     }
   }
 
-  if (cacheMisses.length === 0) return map;
+  if (cacheMisses.length === 0) return { statementsMap, roeMap };
 
+  // Polygon free: 5 calls/min — 12,500ms keeps us safely under the limit
   const results = await withRateLimit(
     cacheMisses.map(
-      (ticker) => (): Promise<[string, FmpIncomeStatement[]] | null> =>
-        fetchIncomeStatements(ticker, 8)
-          .then(async (stmts) => {
-            await setCachedFundamentals(ticker, stmts);
-            return [ticker, stmts] as [string, FmpIncomeStatement[]];
+      (ticker) => (): Promise<[string, FmpIncomeStatement[], number | null] | null> =>
+        fetchFinancials(ticker, 8)
+          .then(async ({ statements, ttmRoe }) => {
+            await setCachedFundamentals(ticker, statements);
+            return [ticker, statements, ttmRoe] as [string, FmpIncomeStatement[], number | null];
           })
           .catch((err) => {
-            console.warn(`[FMP] Fundamentals unavailable for ${ticker}: ${(err as Error).message}`);
+            console.warn(`[Polygon] Fundamentals unavailable for ${ticker}: ${(err as Error).message}`);
             return null;
           })
-    )
+    ),
+    12_500
   );
 
   for (const result of results) {
-    if (result) map.set(result[0], result[1]);
+    if (result) {
+      const [ticker, stmts, roe] = result;
+      statementsMap.set(ticker, stmts);
+      if (roe !== null) roeMap.set(ticker, roe);
+    }
   }
-  return map;
+  return { statementsMap, roeMap };
 }
 
 async function fetchProfilesForAll(tickers: string[]): Promise<Map<string, CompanyProfile>> {
-  // Primary: Finnhub REST profile. Fallback: Alpha Vantage OVERVIEW.
   const results = await withRateLimit(
     tickers.map((ticker) => async (): Promise<[string, CompanyProfile | null] | null> => {
       try {
         const profile = await finnhubClient.profile(ticker);
-        if (profile) return [ticker, profile];
-        return [ticker, await fetchProfileFallback(ticker)];
+        return [ticker, profile];
       } catch (err) {
-        console.warn(`[Finnhub/AlphaVantage] Profile unavailable for ${ticker}: ${(err as Error).message}`);
+        console.warn(`[Finnhub] Profile unavailable for ${ticker}: ${(err as Error).message}`);
         return null;
       }
-    })
+    }),
+    200
   );
 
   const map = new Map<string, CompanyProfile>();
@@ -136,6 +142,16 @@ function buildScanResult(
   const dataCompletenessScore =
     totalRules === 0 ? 100 : Math.round(((totalRules - missingFields.length) / totalRules) * 100);
 
+  const beatsSpy63d =
+    minervini.return63d !== null &&
+    minervini.spy63dReturn !== null &&
+    minervini.return63d > minervini.spy63dReturn;
+
+  const beatsSpy21d =
+    minervini.return21d !== null &&
+    minervini.spy21dReturn !== null &&
+    minervini.return21d > minervini.spy21dReturn;
+
   return {
     symbol: minervini.symbol,
     close: minervini.close,
@@ -156,6 +172,11 @@ function buildScanResult(
     percentFromHigh52Week: minervini.percentFromHigh52Week,
     percentAboveLow52Week: minervini.percentAboveLow52Week,
     averageVolume50: minervini.averageVolume50,
+    volumeRatioPrevDay: minervini.volumeRatioPrevDay,
+    return63d: minervini.return63d,
+    return21d: minervini.return21d,
+    beatsSpy63d,
+    beatsSpy21d,
     relativeStrengthRank: minervini.relativeStrengthRank,
 
     passesMinervini: minerviniResult.passesAvailableRules,
@@ -185,22 +206,34 @@ export async function runScan(limit = SCHEDULED_SCAN_LIMIT): Promise<StockScanRe
     return [];
   }
 
-  // Step 2: compute Minervini metrics — skip insufficient data
+  // Step 2: compute Minervini metrics — skip insufficient data; exclude SPY from candidates
   const minerviniMetrics: MinerviniMetrics[] = [];
   for (const ticker of tickers) {
+    if (ticker === "SPY") continue;
     const prices = priceMap.get(ticker);
     if (!prices || prices.length === 0) continue;
     const metrics = computeMinerviniMetrics(ticker, prices);
     if (metrics) minerviniMetrics.push(metrics);
   }
 
-  // Step 3: compute RS scores and assign cross-sectional ranks to all metrics
+  // Step 3: compute RS scores and assign cross-sectional ranks (excludes SPY)
   const rsScoreMap = new Map<string, number>();
   for (const m of minerviniMetrics) {
     const prices = priceMap.get(m.symbol) ?? [];
     rsScoreMap.set(m.symbol, computeRsScore(prices));
   }
   assignRelativeStrengthRanks(minerviniMetrics, rsScoreMap);
+
+  // Step 3b: assign SPY benchmark returns to all metrics
+  const spyPrices = priceMap.get("SPY") ?? [];
+  const { return63d: spy63d, return21d: spy21d } = computeSpyReturns(spyPrices);
+  if (spy63d === null) {
+    console.warn("[Scan] SPY 63-day return unavailable — beats-SPY rule will be skipped (lenient)");
+  }
+  for (const m of minerviniMetrics) {
+    m.spy63dReturn = spy63d;
+    m.spy21dReturn = spy21d;
+  }
 
   // Step 4: evaluate Minervini rules (lenient) — keep candidates that pass available rules
   const minerviniPassing = minerviniMetrics.filter(
@@ -217,33 +250,10 @@ export async function runScan(limit = SCHEDULED_SCAN_LIMIT): Promise<StockScanRe
 
   // Step 5: fetch fundamentals and profiles only for Minervini-passing stocks
   console.log("Fetching fundamentals and profiles for Minervini-passing stocks...");
-  const [fundamentalMap, profileMap] = await Promise.all([
+  const [{ statementsMap: fundamentalMap, roeMap }, profileMap] = await Promise.all([
     fetchFundamentalsForAll(passingTickers),
     fetchProfilesForAll(passingTickers),
   ]);
-
-  // Step 5b: Alpha Vantage fallback for tickers where FMP returned nothing
-  const missingFundamentalTickers = passingTickers.filter(
-    (t) => (fundamentalMap.get(t) ?? []).length === 0
-  );
-  const avFundamentalsMap = new Map<
-    string,
-    { epsGrowthYoY: number | null; revenueGrowthYoY: number | null; roe: number | null }
-  >();
-  if (missingFundamentalTickers.length > 0) {
-    const avResults = await withRateLimit(
-      missingFundamentalTickers.map(
-        (ticker) => async (): Promise<[string, Awaited<ReturnType<typeof fetchFundamentalsFallback>>]> =>
-          [ticker, await fetchFundamentalsFallback(ticker).catch((err) => {
-            console.warn(`[AlphaVantage] Fundamentals fallback failed for ${ticker}: ${(err as Error).message}`);
-            return null;
-          })]
-      )
-    );
-    for (const [ticker, data] of avResults) {
-      if (data) avFundamentalsMap.set(ticker, data);
-    }
-  }
 
   // Step 6: compute IBD metrics, score, build results
   const scanResults: StockScanResult[] = [];
@@ -251,15 +261,9 @@ export async function runScan(limit = SCHEDULED_SCAN_LIMIT): Promise<StockScanRe
   for (const minervini of minerviniPassing) {
     const minerviniResult = evaluateMinervini(minervini);
     const statements = fundamentalMap.get(minervini.symbol) ?? [];
-    const ibdMetrics = computeIbdMetrics(minervini.symbol, statements, minervini);
-
-    // Apply Alpha Vantage overrides when FMP had no data
-    const avData = avFundamentalsMap.get(minervini.symbol);
-    if (avData && statements.length === 0) {
-      ibdMetrics.epsGrowthLatestQuarter = avData.epsGrowthYoY;
-      ibdMetrics.revenueGrowthLatestQuarter = avData.revenueGrowthYoY;
-      ibdMetrics.roe = avData.roe;
-    }
+    const prices = priceMap.get(minervini.symbol) ?? [];
+    const ibdMetrics = computeIbdMetrics(minervini.symbol, statements, minervini, prices);
+    ibdMetrics.roe = roeMap.get(minervini.symbol) ?? null;
     const ibdResult = evaluateIbd(ibdMetrics);
     const scoreBreakdown = computeScore(minerviniResult, ibdResult, minervini);
     const profile = profileMap.get(minervini.symbol) ?? null;

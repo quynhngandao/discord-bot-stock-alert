@@ -1,9 +1,9 @@
 export interface ScoringBreakdown {
-  trend: number; // 0–40
-  leadership: number; // 0–30
-  setup: number; // 0–20
-  market: number; // 0–10
-  total: number; // 0–100
+  trend: number;    // 0–50
+  rs: number;       // 0–20
+  proximity: number; // 0–15
+  volume: number;   // 0–15
+  total: number;    // 0–100
 }
 
 export interface MinerviniMetrics {
@@ -12,13 +12,19 @@ export interface MinerviniMetrics {
   sma50: number;
   sma150: number;
   sma200: number;
+  sma150OneMonthAgo: number;
   sma200OneMonthAgo: number;
   high52Week: number;
   low52Week: number;
   percentFromHigh52Week: number;
   percentAboveLow52Week: number;
   averageVolume50: number;
-  relativeStrengthRank: number | null;
+  volumeRatioPrevDay: number;
+  return63d: number | null;
+  return21d: number | null;
+  spy63dReturn: number | null; // assigned in orchestrator from SPY prices
+  spy21dReturn: number | null; // assigned in orchestrator from SPY prices
+  relativeStrengthRank: number | null; // assigned cross-sectionally in orchestrator
 }
 
 export interface IbdApproxMetrics {
@@ -28,9 +34,14 @@ export interface IbdApproxMetrics {
   revenueGrowthLatestQuarter: number | null;
   revenueGrowthPreviousQuarter: number | null;
   annualEpsGrowth3Y: number | null;
+  annualRevenueGrowth3Y: number | null;
   roe: number | null;
   relativeStrengthRank: number | null;
   averageVolume50: number;
+  dollarVolume50: number;
+  accumulationRatio: number | null;
+  epsAcceleration: boolean | null;
+  revenueAcceleration: boolean | null;
 }
 
 export interface StockScanResult {
@@ -51,14 +62,16 @@ export interface StockScanResult {
   percentFromHigh52Week: number;
   percentAboveLow52Week: number;
   averageVolume50: number;
+  volumeRatioPrevDay: number;
+  return63d: number | null;
+  return21d: number | null;
+  beatsSpy63d: boolean;
+  beatsSpy21d: boolean;
   relativeStrengthRank: number | null;
 
-  // Lenient: null fields are skipped — used for candidate discovery
   passesMinervini: boolean;
   passesIbdApprox: boolean;
   passesAvailableRules: boolean;
-
-  // Strict: null fields fail — used for Discord alerts
   passesStrictRules: boolean;
 
   missingFields: string[];

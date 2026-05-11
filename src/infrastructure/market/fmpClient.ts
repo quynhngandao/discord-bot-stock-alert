@@ -35,7 +35,7 @@ async function get<T>(path: string, params: Record<string, string> = {}): Promis
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
   }
-  url.searchParams.set("apikey", env.FMP_API_KEY);
+  url.searchParams.set("apikey", env.FMP_API_KEY ?? "");
 
   const res = await fetch(url.toString());
   if (!res.ok) {

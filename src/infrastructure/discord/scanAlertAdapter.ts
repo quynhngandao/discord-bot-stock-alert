@@ -4,11 +4,6 @@ import { DISCLAIMER } from "../../config/alertConfig.js";
 import type { StockScanResult } from "../../domain/types.js";
 import { discordClient } from "./client.js";
 
-function fmt(n: number | null, suffix = "%"): string {
-  if (n === null) return "N/A";
-  return `${n > 0 ? "+" : ""}${n.toFixed(1)}${suffix}`;
-}
-
 export async function sendNewsAlert(
   ticker: string,
   headline: string,
@@ -59,44 +54,32 @@ export async function sendScanAlert(
 
   const color = priority === "HIGH PRIORITY" ? 0xffd700 : 0x00b4d8;
 
+  const rsLine = result.beatsSpy63d
+    ? result.beatsSpy21d
+      ? "63d ✅ · 21d ✅ (both outperforming SPY)"
+      : "63d ✅ · 21d ❌ (outperforming SPY on 63d)"
+    : "❌ Not outperforming SPY";
+
+  const volRatioStr = result.volumeRatioPrevDay.toFixed(2);
+  const avgVolStr = (result.averageVolume50 / 1_000_000).toFixed(1) + "M";
+
   const embed = new EmbedBuilder()
     .setTitle(`${priority} — ${result.symbol}`)
-    .setDescription(`Daily scan result · Score: **${score}/100**`)
+    .setDescription(`Daily scan · Score: **${score}/100**`)
     .setColor(color)
     .addFields(
+      { name: "Close", value: `$${result.close.toFixed(2)}`, inline: true },
+      { name: "From 52w High", value: `${result.percentFromHigh52Week.toFixed(1)}%`, inline: true },
+      { name: "Above 52w Low", value: `+${result.percentAboveLow52Week.toFixed(1)}%`, inline: true },
       {
-        name: "Price",
-        value: `$${result.close.toFixed(2)}`,
-        inline: true,
-      },
-      {
-        name: "From 52w High",
-        value: fmt(result.percentFromHigh52Week),
-        inline: true,
-      },
-      {
-        name: "Above 52w Low",
-        value: fmt(result.percentAboveLow52Week),
-        inline: true,
-      },
-      {
-        name: "SMA",
-        value: `50: $${result.sma50.toFixed(2)} · 150: $${result.sma150.toFixed(2)} · 200: $${result.sma200.toFixed(2)}`,
+        name: "Trend",
+        value: `50d: $${result.sma50.toFixed(2)} · 150d: $${result.sma150.toFixed(2)} · 200d: $${result.sma200.toFixed(2)}`,
         inline: false,
       },
+      { name: "Relative Strength", value: rsLine, inline: false },
       {
-        name: "EPS Growth (Q)",
-        value: fmt(result.epsGrowthLatestQuarter),
-        inline: true,
-      },
-      {
-        name: "Revenue Growth (Q)",
-        value: fmt(result.revenueGrowthLatestQuarter),
-        inline: true,
-      },
-      {
-        name: "Filters",
-        value: `Minervini: ${result.passesMinervini ? "✅" : "❌"} · IBD: ${result.passesIbdApprox ? "✅" : "❌"}`,
+        name: "Volume",
+        value: `50d avg: ${avgVolStr} · Prior-day ratio: ${volRatioStr}x`,
         inline: false,
       }
     )

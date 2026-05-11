@@ -8,6 +8,7 @@ const schema = z.object({
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_GUILD_ID: z.string().min(1),
   TIINGO_API_KEY: z.string().min(1),
+  POLYGON_API_KEY: z.string().min(1),
   FINNHUB_API_KEY: z.string().min(1),
   FMP_API_KEY: z.string().min(1),
   ALPHA_VANTAGE_API_KEY: z.string().min(1),

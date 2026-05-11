@@ -2,205 +2,210 @@
 
 ## Mode
 
-`ALERT_ONLY` — no broker integration, no order execution, no position sizing, no buy/sell commands, no account balance access, no trading permissions.
+`ALERT_ONLY` - no broker integration, no order execution, no position sizing, no buy/sell commands, no account balance access, and no trading permissions.
 
-## Core alert filters
+The bot may only send Discord watchlist alerts. Use words like `watch`, `setup`, or `alert`. Do not use `buy`, `sell`, `long`, `short`, `entry`, `exit`, or `position` in alerts.
 
-> Stocks must also pass the Minervini and IBD criteria in [`SCANNER_CRITERIA.md`](./SCANNER_CRITERIA.md) before the alert rules below are evaluated.
+## v1 design target
 
-All alerts require the stock to pass every filter before any rule is evaluated:
+v1 is a free-tier-friendly daily watchlist scanner.
+
+The bot does not run a live intraday scanner in v1. It does not require live quotes, bid/ask spread, real-time VWAP, 5-minute candles, halt status, or live relative volume.
+
+All v1 calculations use the latest completed daily candle and a small curated ticker list.
+
+## Data used in v1
+
+| Data | Required | Notes |
+|---|---:|---|
+| Curated ticker list | Yes | Start with 20-200 liquid US stocks. |
+| Daily OHLCV bars | Yes | Use at least 220 daily bars; 260 is preferred. |
+| Benchmark daily bars | Yes | Use `SPY` for simple relative strength comparison. |
+| Fundamentals | No | Do not make EPS/revenue a hard requirement in v1. Add later only if cached and reliable. |
+| Live quotes | No | Not used in v1. |
+| 5-minute candles | No | Not used in v1. |
+| VWAP intraday | No | Not used in v1. |
+| Spread | No | Not used in v1. |
+| Halt status | No | Not used in v1. |
+| Earnings calendar | No | Optional later; not a hard blocker in v1. |
+
+## Core filters
+
+A ticker must pass every core filter before any alert is created.
 
 | Filter | Requirement |
 |---|---|
-| Price | >= $5 |
-| Average daily volume | >= 1,000,000 shares |
-| Relative volume | >= 1.5x |
-| Spread | <= 0.5% |
-| Halted | No |
-| Earnings day | No |
+| Price | Latest daily close >= $5 |
+| Data sufficiency | At least 220 completed daily candles |
+| Average daily volume | 50-day average volume >= 1,000,000 shares |
+| Average dollar volume | Latest close * 50-day average volume >= $10,000,000 |
+| Duplicate alert | Ticker has not already alerted today |
 
-## Alert rules
+## Minimal Minervini-lite criteria
 
-### Bullish
+These are daily-chart approximations of the Minervini trend template.
 
-Send `BULLISH` alert when:
+A ticker must pass all of the following:
 
-- Price > VWAP
-- 20 EMA > 50 EMA
-- Price breaks above previous 5-minute candle high
-- Relative volume >= 1.5
-- Risk/reward area >= 2:1
+- Latest close > 50-day SMA
+- Latest close > 150-day SMA
+- Latest close > 200-day SMA
+- 150-day SMA is higher than it was 20 trading days ago (rising)
+- 200-day SMA is higher than it was 20 trading days ago (rising)
+- 50-day SMA > 150-day SMA
+- 50-day SMA > 200-day SMA
+- Latest close is at least 30% above the 52-week low
+- Latest close is within 25% of the 52-week high
+- RS rank (cross-sectional 12-month return percentile) >= 70
+- 50-day average volume >= 500,000 shares
 
-### Bearish
+## Minimal IBD/CAN SLIM-lite criteria
 
-Send `BEARISH` alert when:
+IBD proprietary ratings are not available in v1. Use these lightweight approximations instead.
 
-- Price < VWAP
-- 20 EMA < 50 EMA
-- Price breaks below previous 5-minute candle low
-- Relative volume >= 1.5
-- Risk/reward area >= 2:1
+Fundamentals are enrichment only — if EPS or revenue data is unavailable, do not block the alert.
 
-> **VWAP** = volume-weighted average price  
-> **EMA** = exponential moving average
+| Rule | Threshold | Strict? |
+|---|---|---|
+| EPS growth latest quarter (YoY) | >= 25% | Lenient (null = pass) |
+| EPS growth previous quarter (YoY) | >= 25% | Lenient |
+| Revenue growth latest quarter (YoY) | >= 20% | Lenient |
+| Annual EPS growth 3-year | >= 25% | Lenient |
+| ROE | >= 17% | Lenient |
+| RS rank (IBD threshold) | >= 80 | Lenient |
+| Dollar volume 50-day | >= $10,000,000 | Lenient |
+
+Prior-day volume ratio (latest volume / 50-day avg volume) is tracked for scoring and HIGH_PRIORITY gating but is not a pass/fail filter.
+
+## Alert types in v1
+
+Only two Discord alert types are supported in v1:
+
+1. `WATCHLIST`
+2. `HIGH_PRIORITY_WATCHLIST`
+
+Do not add bearish alerts, VWAP alerts, 5-minute breakout alerts, opening-range alerts, halt alerts, news alerts, or pre-market alerts until v1 is working reliably.
+
+## WATCHLIST rule
+
+Send a `WATCHLIST` alert when all are true:
+
+- Core filters pass
+- Minervini-lite criteria pass
+- IBD/CAN SLIM-lite criteria pass
+- Score >= 70
+- Ticker has not already alerted today
+
+## HIGH_PRIORITY_WATCHLIST rule
+
+Send a `HIGH_PRIORITY_WATCHLIST` alert when all are true:
+
+- WATCHLIST rule passes
+- Score >= 85
+- Prior-day volume ratio >= 1.5, or latest close is within 10% of the 52-week high
+
+## Score model
+
+The score is only used to rank watchlist candidates. It is not a trading signal.
+
+| Category | Points |
+|---|---:|
+| Trend template strength | 50 |
+| Relative strength vs SPY | 20 |
+| 52-week high proximity | 15 |
+| Volume/liquidity | 15 |
+| Total | 100 |
+
+Scoring details:
+
+| Rule | Points |
+|---|---:|
+| Trend: proportional to Minervini rules passed (9 rules × ~5.5 pts each) | 0–50 |
+| 63-day return > SPY 63-day return | 15 |
+| 21-day return > SPY 21-day return | 5 |
+| Close within 10% of 52-week high | 15 |
+| Close within 15% of 52-week high | 10 |
+| Close within 25% of 52-week high | 0 |
+| 50-day average volume >= 1M | 5 |
+| Average dollar volume >= $10M | 5 |
+| Prior-day volume ratio >= 1.5 | 5 |
+
+## Do not alert rules
+
+These rules override all alert rules.
+
+- Do not alert if latest close < $5
+- Do not alert if fewer than 220 daily candles are available
+- Do not alert if 50-day average volume < 1,000,000 shares
+- Do not alert if average dollar volume < $10,000,000
+- Do not alert if ticker already alerted today
+- Do not alert if the latest daily candle is stale or missing
+- Do not alert if score < 70
+- Do not alert more than the configured maximum number of tickers per scan
+
+## Cooldown and deduplication rules
+
+| Rule | Value |
+|---|---:|
+| Same ticker cooldown | 1 trading day |
+| Max alerts per ticker per day | 1 |
+| Max alerts per scan | 10 |
+| Max Discord messages per scan | 10 |
 
 ## Discord embed format
 
-Use `watch`, `setup`, or `alert` — never `buy` or `sell`.
+Use `WATCHLIST` or `HIGH PRIORITY WATCHLIST`. Do not use `buy` or `sell`.
 
-### Bullish
+### WATCHLIST example
 
-```
-📈 BULLISH WATCH
+```text
+WATCHLIST
 
 Ticker: AAPL
-Price: 192.50
-Setup: VWAP reclaim + 5m breakout
-Trend: Price above VWAP, 20 EMA > 50 EMA
-Relative Volume: 1.8x
-Key Level: 193.00
-Invalidation Area: Below 190.80
-Potential Upside Area: 195.90
-Reason: Breakout with volume confirmation
+Close: 192.50
+Score: 82/100
+Setup: Minervini-lite trend template + relative strength
+Trend: Close above 50/150/200 SMA; 50 SMA > 150 SMA > 200 SMA
+Relative Strength: 63-day return outperforming SPY
+Volume: 50-day avg volume 55.2M; prior-day volume 1.2x avg
+Key Level: 52-week high area 199.62
+Invalidation Reference: Close back below 50-day SMA or recent daily swing low
+Reason: Trend template pass, near highs, outperforming SPY
 
 Not financial advice. Alert only.
 ```
 
-### Bearish
+### HIGH PRIORITY WATCHLIST example
 
-```
-📉 BEARISH WATCH
+```text
+HIGH PRIORITY WATCHLIST
 
-Ticker: TSLA
-Price: 218.40
-Setup: VWAP rejection + 5m breakdown
-Trend: Price below VWAP, 20 EMA < 50 EMA
-Relative Volume: 2.1x
-Key Level: 217.80
-Invalidation Area: Above 221.00
-Potential Downside Area: 214.50
-Reason: Breakdown with volume confirmation
+Ticker: NVDA
+Close: 912.40
+Score: 91/100
+Setup: Trend template pass + strong volume expansion
+Trend: Close above 50/150/200 SMA; 200 SMA rising
+Relative Strength: 21-day and 63-day returns outperforming SPY
+Volume: 50-day avg volume 42.8M; prior-day volume 1.7x avg
+Key Level: 52-week high area 950.02
+Invalidation Reference: Close back below 50-day SMA or recent daily swing low
+Reason: Strong trend, near 52-week high, volume confirmation
 
 Not financial advice. Alert only.
 ```
 
-## Supported alert types
+## Later versions
 
-**VWAP**
-- `vwap_reclaim`
-- `vwap_rejection`
+Move these to a later intraday version only after the daily watchlist bot is reliable:
 
-**5-minute candle**
-- `five_minute_breakout`
-- `five_minute_breakdown`
-
-**Opening range**
-- `opening_range_breakout`
-- `opening_range_breakdown`
-
-**Volume**
-- `relative_volume_spike`
-- `unusual_volume_spike`
-
-**Pre-market levels**
-- `premarket_high_break`
-- `premarket_low_break`
-
-**Prior day levels**
-- `previous_day_high_break`
-- `previous_day_low_break`
-
-**52-week levels**
-- `fifty_two_week_high_break`
-- `fifty_two_week_low_break`
-
-**Gap continuation**
-- `gap_up_continuation`
-- `gap_down_continuation`
-
-**Key levels**
-- `support_bounce`
-- `resistance_rejection`
-
-**Retest**
-- `breakout_retest`
-- `breakdown_retest`
-
-**Failed moves**
-- `failed_breakout`
-- `failed_breakdown`
-
-**Special**
-- `halt_resume`
-- `news_volume_spike`
-
-## "Do not alert" rules
-
-These matter more than the alert rules — noise kills a bot faster than missing signals.
-
-- Do not alert in the first 5 minutes after market open
-- Do not alert in the last 10 minutes before market close
-- Do not alert if spread > 0.5%
-- Do not alert if relative volume < 1.5
-- Do not alert if price < $5
-- Do not alert if average volume < 1M
-- Do not alert if ticker already alerted in the last 30 minutes
-- Do not alert if stock is halted
-- Do not alert if earnings are today
-- Do not alert if move is more than 3 ATR from VWAP
-
-> **ATR** = average true range
-
-## Cooldown rules
-
-| Rule | Value |
-|---|---|
-| Same ticker cooldown | 30 minutes |
-| Same setup cooldown | 60 minutes |
-| Max alerts per ticker per day | 3 |
-| Max alerts per channel per hour | 10 |
-
-## Recommended config
-
-```json
-{
-  "mode": "alert_only",
-  "minPrice": 5,
-  "minAvgVolume": 1000000,
-  "minRelativeVolume": 1.5,
-  "maxSpreadPercent": 0.5,
-  "fastEMA": 20,
-  "slowEMA": 50,
-  "atrPeriod": 14,
-  "minRiskRewardArea": 2,
-  "noAlertFirstMinutes": 5,
-  "noAlertLastMinutes": 10,
-  "blockEarningsDay": true,
-  "blockHaltedStocks": true,
-  "maxAtrExtensionFromVwap": 3,
-  "sameTickerCooldownMinutes": 30,
-  "sameSetupCooldownMinutes": 60,
-  "maxAlertsPerTickerPerDay": 3,
-  "maxAlertsPerChannelPerHour": 10
-}
-```
-
-## v1 scope
-
-Start with only 3 alert types:
-
-1. VWAP reclaim
-2. 5-minute breakout
-3. High relative volume
-
-**v1 rule (all must be true):**
-
-- Price >= $5
-- Average volume >= 1M
-- Relative volume >= 1.5
-- Price above VWAP
-- 20 EMA > 50 EMA
-- Price breaks above previous 5-minute candle high
-- Ticker has not alerted in the last 30 minutes
-
-Do not add more setups until v1 is working. Noise is a bigger problem than missing signals.
+- VWAP reclaim/rejection
+- 5-minute breakout/breakdown
+- Opening range breakout/breakdown
+- Live relative volume
+- Bid/ask spread checks
+- Halt checks
+- Earnings-day blocking
+- News-volume alerts
+- Pre-market high/low breaks
+- Prior-day high/low breaks
+- Discord slash commands
