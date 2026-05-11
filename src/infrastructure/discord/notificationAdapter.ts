@@ -33,9 +33,17 @@ export async function sendAlert(payload: AlertPayload): Promise<void> {
       { name: "Relative Volume", value: `${payload.relativeVolume.toFixed(1)}x`, inline: true },
       { name: "Trend", value: payload.trend, inline: false },
       { name: "Key Level", value: `$${payload.keyLevel.toFixed(2)}`, inline: true },
-      { name: "Invalidation", value: `${isBullish ? "Below" : "Above"} $${payload.invalidationArea.toFixed(2)}`, inline: true },
-      { name: isBullish ? "Potential Upside" : "Potential Downside", value: `$${payload.potentialArea.toFixed(2)}`, inline: true },
-      { name: "Reason", value: payload.reason, inline: false },
+      {
+        name: "Invalidation",
+        value: `${isBullish ? "Below" : "Above"} $${payload.invalidationArea.toFixed(2)}`,
+        inline: true,
+      },
+      {
+        name: isBullish ? "Potential Upside" : "Potential Downside",
+        value: `$${payload.potentialArea.toFixed(2)}`,
+        inline: true,
+      },
+      { name: "Reason", value: payload.reason, inline: false }
     )
     .setFooter({ text: DISCLAIMER })
     .setTimestamp();

@@ -3,14 +3,14 @@ import { env } from "../../config/env.js";
 const BASE_URL = "https://finnhub.io/api/v1";
 
 export interface Quote {
-  c: number;  // current price
-  d: number;  // change
+  c: number; // current price
+  d: number; // change
   dp: number; // percent change
-  h: number;  // day high
-  l: number;  // day low
-  o: number;  // open
+  h: number; // day high
+  l: number; // day low
+  o: number; // open
   pc: number; // previous close
-  t: number;  // timestamp
+  t: number; // timestamp
 }
 
 async function get<T>(path: string, params: Record<string, string> = {}): Promise<T> {

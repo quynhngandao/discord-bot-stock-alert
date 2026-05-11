@@ -64,10 +64,13 @@ function handleMessage(raw: string): void {
   for (const item of msg.data) {
     if (!item.related) continue;
     const existing = newsStore.get(item.related) ?? [];
-    newsStore.set(item.related, [
-      { headline: item.headline, source: item.source, datetime: item.datetime, url: item.url },
-      ...existing,
-    ].slice(0, MAX_NEWS_PER_TICKER));
+    newsStore.set(
+      item.related,
+      [
+        { headline: item.headline, source: item.source, datetime: item.datetime, url: item.url },
+        ...existing,
+      ].slice(0, MAX_NEWS_PER_TICKER)
+    );
   }
 }
 

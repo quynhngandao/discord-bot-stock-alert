@@ -46,4 +46,3 @@ export const scanSnapshots = pgTable("scan_snapshots", {
   relativeVolume: real("relative_volume"),
   price: real("price"),
 });
-
