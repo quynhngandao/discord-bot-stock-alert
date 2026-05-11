@@ -3,6 +3,10 @@ import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
 import type { FmpHistoricalPrice, FmpIncomeStatement } from "../infrastructure/market/fmpClient.js";
 import { fetchIncomeStatements } from "../infrastructure/market/fmpClient.js";
+import {
+  getCachedFundamentals,
+  setCachedFundamentals,
+} from "../infrastructure/db/fundamentalsCacheService.js";
 import { fetchHistoricalPrices } from "../infrastructure/market/tiingoClient.js";
 import { finnhubClient } from "../infrastructure/market/finnhubClient.js";
 import type { CompanyProfile } from "../infrastructure/market/finnhubClient.js";
@@ -54,11 +58,28 @@ async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHist
 async function fetchFundamentalsForAll(
   tickers: string[]
 ): Promise<Map<string, FmpIncomeStatement[]>> {
+  const map = new Map<string, FmpIncomeStatement[]>();
+
+  const cacheMisses: string[] = [];
+  for (const ticker of tickers) {
+    const cached = await getCachedFundamentals(ticker);
+    if (cached) {
+      map.set(ticker, cached);
+    } else {
+      cacheMisses.push(ticker);
+    }
+  }
+
+  if (cacheMisses.length === 0) return map;
+
   const results = await withRateLimit(
-    tickers.map(
+    cacheMisses.map(
       (ticker) => (): Promise<[string, FmpIncomeStatement[]] | null> =>
         fetchIncomeStatements(ticker, 8)
-          .then((stmts) => [ticker, stmts] as [string, FmpIncomeStatement[]])
+          .then(async (stmts) => {
+            await setCachedFundamentals(ticker, stmts);
+            return [ticker, stmts] as [string, FmpIncomeStatement[]];
+          })
           .catch((err) => {
             console.warn(`[FMP] Fundamentals unavailable for ${ticker}: ${(err as Error).message}`);
             return null;
@@ -66,7 +87,6 @@ async function fetchFundamentalsForAll(
     )
   );
 
-  const map = new Map<string, FmpIncomeStatement[]>();
   for (const result of results) {
     if (result) map.set(result[0], result[1]);
   }

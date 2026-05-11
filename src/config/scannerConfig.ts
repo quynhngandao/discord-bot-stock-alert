@@ -42,6 +42,7 @@ export const scannerConfig = {
     minEpsGrowthPreviousQuarter: 25, // %
     minRevenueGrowthLatestQuarter: 20, // %
     minRevenueGrowthPreviousQuarter: 20, // %
+    minRoe: 17, // % — IBD guideline: >= 17%
     minAvgVolume50: 500_000,
     minRsRank: 80,
   },

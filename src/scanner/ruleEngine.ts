@@ -97,6 +97,7 @@ export function evaluateIbd(ibd: IbdApproxMetrics): RuleSetResult {
       cfg.minRevenueGrowthPreviousQuarter,
       (v, t) => v >= t
     ),
+    rule("ROE", ibd.roe, cfg.minRoe, (v, t) => v >= t),
     rule("avg volume 50d (IBD)", ibd.averageVolume50, cfg.minAvgVolume50, (v, t) => v >= t),
     rule("RS rank (IBD)", ibd.relativeStrengthRank, cfg.minRsRank, (v, t) => v >= t),
   ];

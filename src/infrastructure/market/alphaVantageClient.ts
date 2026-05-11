@@ -54,7 +54,7 @@ export async function fetchFundamentalsFallback(symbol: string): Promise<{
     const data = await fetchOverview(symbol);
     if (!data) return null;
     return {
-      roe: parseFloat(data.ReturnOnEquityTTM) || null,
+      roe: data.ReturnOnEquityTTM ? parseFloat(data.ReturnOnEquityTTM) * 100 : null,
       epsGrowthYoY: data.QuarterlyEarningsGrowthYOY
         ? parseFloat(data.QuarterlyEarningsGrowthYOY) * 100
         : null,

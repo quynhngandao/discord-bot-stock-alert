@@ -36,6 +36,13 @@ export const alertState = pgTable("alert_state", {
   lastState: varchar("last_state", { length: 20 }),
 });
 
+export const fundamentalsCache = pgTable("fundamentals_cache", {
+  id: serial("id").primaryKey(),
+  ticker: varchar("ticker", { length: 10 }).notNull().unique(),
+  data: jsonb("data").notNull(), // FmpIncomeStatement[]
+  cachedAt: timestamp("cached_at").defaultNow().notNull(),
+});
+
 export const scanSnapshots = pgTable("scan_snapshots", {
   id: serial("id").primaryKey(),
   ticker: varchar("ticker", { length: 10 }).notNull(),
