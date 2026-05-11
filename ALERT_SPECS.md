@@ -6,6 +6,8 @@
 
 ## Core alert filters
 
+> Stocks must also pass the Minervini and IBD criteria in [`SCANNER_CRITERIA.md`](./SCANNER_CRITERIA.md) before the alert rules below are evaluated.
+
 All alerts require the stock to pass every filter before any rule is evaluated:
 
 | Filter | Requirement |
