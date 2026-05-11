@@ -11,8 +11,9 @@ export async function processResults(results: StockScanResult[]): Promise<void> 
   let skipped = 0;
 
   for (const result of results) {
-    // Strict rules: all fields must be present and pass (null = fail)
-    if (!result.passesStrictRules) {
+    // Must pass all available rules (lenient: missing fields are skipped, not failed)
+    // Require paid Finnhub plan for real-time news-based alerts.
+    if (!result.passesAvailableRules) {
       skipped++;
       continue;
     }

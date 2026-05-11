@@ -15,6 +15,7 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "commands:register": "tsx scripts/registerCommands.ts",
+    "test:ping": "tsx scripts/testPing.ts",
     "test:alert": "tsx scripts/testAlert.ts",
     "test:scan": "tsx scripts/testScan.ts",
     "test:discord": "tsx scripts/testDiscord.ts",
