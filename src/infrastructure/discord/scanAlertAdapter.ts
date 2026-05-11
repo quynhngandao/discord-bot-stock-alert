@@ -9,6 +9,21 @@ function fmt(n: number | null, suffix = "%"): string {
   return `${n > 0 ? "+" : ""}${n.toFixed(1)}${suffix}`;
 }
 
+export async function sendScanSkipped(reason: string): Promise<void> {
+  const channel = await discordClient.channels.fetch(env.ALERT_CHANNEL_ID);
+  if (!(channel instanceof TextChannel)) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle("Scan Skipped")
+    .setDescription(`No scan results available.`)
+    .setColor(0x888888)
+    .addFields({ name: "Reason", value: reason, inline: false })
+    .setFooter({ text: "Next scan will run as scheduled." })
+    .setTimestamp();
+
+  await channel.send({ embeds: [embed] });
+}
+
 export async function sendScanAlert(
   result: StockScanResult,
   score: number,

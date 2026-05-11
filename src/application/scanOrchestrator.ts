@@ -22,6 +22,7 @@ import { evaluateIbd, evaluateMinervini } from "../scanner/ruleEngine.js";
 import type { RuleSetResult } from "../scanner/ruleEngine.js";
 import { computeScore } from "../scanner/scoring.js";
 import { processResults } from "../alerts/alertEngine.js";
+import { sendScanSkipped } from "../infrastructure/discord/scanAlertAdapter.js";
 
 const SCAN_LIMIT = 20; // cap per run to stay well within API rate limits during testing
 
@@ -37,7 +38,7 @@ async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHist
         fetchHistoricalPrices(ticker)
           .then((prices) => [ticker, prices] as [string, FmpHistoricalPrice[]])
           .catch((err) => {
-            console.warn(`Skipping ${ticker}: ${(err as Error).message}`);
+            console.warn(`[Tiingo] Skipping ${ticker}: ${(err as Error).message}`);
             return null;
           })
     )
@@ -59,7 +60,7 @@ async function fetchFundamentalsForAll(
         fetchIncomeStatements(ticker, 8)
           .then((stmts) => [ticker, stmts] as [string, FmpIncomeStatement[]])
           .catch((err) => {
-            console.warn(`Fundamentals unavailable for ${ticker}: ${(err as Error).message}`);
+            console.warn(`[FMP] Fundamentals unavailable for ${ticker}: ${(err as Error).message}`);
             return null;
           })
     )
@@ -81,7 +82,7 @@ async function fetchProfilesForAll(tickers: string[]): Promise<Map<string, Compa
         if (profile) return [ticker, profile];
         return [ticker, await fetchProfileFallback(ticker)];
       } catch (err) {
-        console.warn(`Profile unavailable for ${ticker}: ${(err as Error).message}`);
+        console.warn(`[Finnhub/AlphaVantage] Profile unavailable for ${ticker}: ${(err as Error).message}`);
         return null;
       }
     })
@@ -151,6 +152,13 @@ export async function runScan(): Promise<StockScanResult[]> {
   console.log("Fetching historical prices...");
   const priceMap = await fetchPricesForAll(tickers);
 
+  if (priceMap.size === 0) {
+    const msg = "Historical price data unavailable — Tiingo API rate limit reached. No stocks could be evaluated. Please wait before retrying.";
+    console.warn(msg);
+    await sendScanSkipped(msg);
+    return [];
+  }
+
   // Step 2: compute Minervini metrics — skip insufficient data
   const minerviniMetrics: MinerviniMetrics[] = [];
   for (const ticker of tickers) {
@@ -200,7 +208,10 @@ export async function runScan(): Promise<StockScanResult[]> {
     const avResults = await withRateLimit(
       missingFundamentalTickers.map(
         (ticker) => async (): Promise<[string, Awaited<ReturnType<typeof fetchFundamentalsFallback>>]> =>
-          [ticker, await fetchFundamentalsFallback(ticker).catch(() => null)]
+          [ticker, await fetchFundamentalsFallback(ticker).catch((err) => {
+            console.warn(`[AlphaVantage] Fundamentals fallback failed for ${ticker}: ${(err as Error).message}`);
+            return null;
+          })]
       )
     );
     for (const [ticker, data] of avResults) {
