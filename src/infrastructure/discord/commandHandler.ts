@@ -1,9 +1,9 @@
-import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from "discord.js";
+import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags, DiscordAPIError } from "discord.js";
 import { gte } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { alerts, symbols } from "../db/schema.js";
 import { runScan, MANUAL_SCAN_LIMIT } from "../../application/scanOrchestrator.js";
-import { isMarketClosed } from "../../utils/marketCalendar.js";
+import { isMarketClosed, isMarketOpen } from "../../utils/marketCalendar.js";
 import { DISCLAIMER } from "../../config/alertConfig.js";
 
 function todayStart(): Date {
@@ -51,7 +51,7 @@ async function handleStatus(interaction: ChatInputCommandInteraction): Promise<v
   const activeCount = symbolRows.filter((s) => s.isActive).length;
 
   const nextScan = "Weekdays at 8:05 AM CST (25 min before market open)";
-  const marketStatus = isMarketClosed() ? "Closed" : "Open";
+  const marketStatus = isMarketOpen() ? "Open" : "Closed";
 
   const embed = new EmbedBuilder()
     .setTitle("Bot Status")
@@ -100,6 +100,7 @@ export async function handleCommand(interaction: ChatInputCommandInteraction): P
     else if (interaction.commandName === "status") await handleStatus(interaction);
     else if (interaction.commandName === "watchlist") await handleWatchlist(interaction);
   } catch (err) {
+    if (err instanceof DiscordAPIError && (err.code === 10062 || err.code === 40060)) return;
     console.error(`[Command] ${interaction.commandName} failed:`, err);
     if (interaction.replied || interaction.deferred) {
       await interaction.editReply("Something went wrong.").catch(() => null);
