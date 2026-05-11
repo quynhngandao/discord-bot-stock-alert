@@ -2,7 +2,9 @@
 
 Alert-only Discord bot that scans stocks using Minervini and IBD criteria and posts trade setup alerts. No broker integration, no order execution.
 
-**Data sources:** Finnhub (quotes + news), Financial Modeling Prep / FMP (ticker universe by market cap), Neon (serverless PostgreSQL).
+**Data sources:** Finnhub (quotes + news), Financial Modeling Prep / FMP (ticker universe + fundamentals), Neon (serverless PostgreSQL).
+
+**API limits (free tier):** Finnhub — 30 calls/second. FMP — 250 calls/day. Daily scan uses ~200 Finnhub calls and ~100 FMP calls, both within limits.
 
 ## Documentation
 

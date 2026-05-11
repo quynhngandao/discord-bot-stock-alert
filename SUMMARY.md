@@ -117,8 +117,28 @@ Just one app with clear modules.
 - Neon (serverless PostgreSQL)
 - cron scheduler
 - Finnhub (intraday quotes and news WebSocket)
-- Financial Modeling Prep / FMP (top ticker universe by market cap)
+- Financial Modeling Prep / FMP (ticker universe + fundamentals)
 - optional Redis later
+
+### API limits (free tier)
+
+| Provider | Limit | Impact |
+|---|---|---|
+| Finnhub | 30 calls/second | 100 candle + 100 quote calls completes in ~7 seconds |
+| FMP | 250 calls/day | 1 screener call (seed) + up to 100 fundamentals calls = ~101/day |
+| Neon | 512 MB bandwidth/30 days | Negligible for alert/scan row writes |
+
+**Data split for the daily scan:**
+
+| Data | Source | Calls/scan |
+|---|---|---|
+| Ticker universe | FMP screener | 1 (seed only, not per scan) |
+| Fundamentals (EPS growth, revenue, ROE) | FMP | 1 per ticker = 100 |
+| Daily candles (for SMA50/150/200, 52-week) | Finnhub | 1 per ticker = 100 |
+| Current quote (price, volume) | Finnhub | 1 per ticker = 100 |
+| News | Finnhub WebSocket | 0 (streaming, no polling) |
+
+Total per daily scan: ~200 Finnhub calls, ~100 FMP calls. Both within free tier limits.
 
 ## 3 Core components
 
