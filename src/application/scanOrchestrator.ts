@@ -28,11 +28,13 @@ import { computeScore } from "../scanner/scoring.js";
 import { processResults } from "../alerts/alertEngine.js";
 import { sendScanSkipped } from "../infrastructure/discord/scanAlertAdapter.js";
 
-const SCAN_LIMIT = 20; // increase to 167 for full universe once rate limits are handled
+const SCHEDULED_SCAN_LIMIT = 25; // Increase to 167 slowly due to API rate limits. 
+// Prioritize top of the list (sorted by market cap) for more timely alerts, and rotate periodically.
+export const MANUAL_SCAN_LIMIT = 10;
 
-async function loadActiveTickers(): Promise<string[]> {
+async function loadActiveTickers(limit: number): Promise<string[]> {
   const rows = await db.select().from(symbols).where(eq(symbols.isActive, true));
-  return rows.map((r) => r.ticker).slice(0, SCAN_LIMIT);
+  return rows.map((r) => r.ticker).slice(0, limit);
 }
 
 async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHistoricalPrice[]>> {
@@ -164,8 +166,8 @@ function buildScanResult(
   };
 }
 
-export async function runScan(): Promise<StockScanResult[]> {
-  const tickers = await loadActiveTickers();
+export async function runScan(limit = SCHEDULED_SCAN_LIMIT): Promise<StockScanResult[]> {
+  const tickers = await loadActiveTickers(limit);
   console.log(`Scanning ${tickers.length} symbols...`);
 
   // Step 1: fetch historical prices for all tickers

@@ -2,7 +2,7 @@ import { ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { gte } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { alerts, symbols } from "../db/schema.js";
-import { runScan } from "../../application/scanOrchestrator.js";
+import { runScan, MANUAL_SCAN_LIMIT } from "../../application/scanOrchestrator.js";
 import { isMarketClosed } from "../../utils/marketCalendar.js";
 import { DISCLAIMER } from "../../config/alertConfig.js";
 
@@ -10,6 +10,13 @@ function todayStart(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+const manualScanCount = new Map<string, number>(); // date → count
+const MAX_MANUAL_SCANS_PER_DAY = 10;
+
+function todayKey(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 async function handleScan(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -20,10 +27,18 @@ async function handleScan(interaction: ChatInputCommandInteraction): Promise<voi
     return;
   }
 
+  const key = todayKey();
+  const count = manualScanCount.get(key) ?? 0;
+  if (count >= MAX_MANUAL_SCANS_PER_DAY) {
+    await interaction.editReply(`Manual scan limit reached (${MAX_MANUAL_SCANS_PER_DAY}/day). Resets at midnight.`);
+    return;
+  }
+  manualScanCount.set(key, count + 1);
+
   try {
-    const results = await runScan();
+    const results = await runScan(MANUAL_SCAN_LIMIT);
     const passed = results.filter((r) => r.passesAvailableRules).length;
-    await interaction.editReply(`Scan complete — ${results.length} candidates, ${passed} passed filters.`);
+    await interaction.editReply(`Scan complete (${count + 1}/${MAX_MANUAL_SCANS_PER_DAY} today) — ${results.length} candidates, ${passed} passed filters.`);
   } catch (err) {
     await interaction.editReply(`Scan failed: ${(err as Error).message}`);
   }
