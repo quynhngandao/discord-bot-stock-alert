@@ -28,7 +28,7 @@ import { computeScore } from "../scanner/scoring.js";
 import { processResults } from "../alerts/alertEngine.js";
 import { sendScanSkipped } from "../infrastructure/discord/scanAlertAdapter.js";
 
-const SCAN_LIMIT = 167; // full universe — lower to 20 for local testing if hitting Tiingo quota
+const SCAN_LIMIT = 20; // increase to 167 for full universe once rate limits are handled
 
 async function loadActiveTickers(): Promise<string[]> {
   const rows = await db.select().from(symbols).where(eq(symbols.isActive, true));
