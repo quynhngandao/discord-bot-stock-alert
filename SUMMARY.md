@@ -111,34 +111,42 @@ Just one app with clear modules.
 
 ### Suggested stack
 
-- TypeScript
-- Node.js
+- TypeScript + Node.js (ESM, NodeNext)
 - discord.js
-- Neon (serverless PostgreSQL)
-- cron scheduler
-- Finnhub (intraday quotes and news WebSocket)
-- Financial Modeling Prep / FMP (ticker universe + fundamentals)
-- optional Redis later
+- Neon (serverless PostgreSQL) + Drizzle ORM
+- node-cron
+- Zod (env validation)
+
+### Data providers
+
+| Provider | Role | When called |
+|---|---|---|
+| Tiingo | Daily OHLCV — powers all Minervini indicators | Every scan, all symbols |
+| Finnhub | Profile, market cap, industry, real-time quotes, news WebSocket | Post-Minervini filter + streaming |
+| FMP | Quarterly EPS and revenue for IBD approximation | Post-Minervini filter only |
+| Alpha Vantage | Fallback for sector, ROE, YoY growth | Only when Finnhub returns null |
 
 ### API limits (free tier)
 
-| Provider | Limit | Impact |
+| Provider | Limit |
+|---|---|
+| Tiingo | 500 calls/day |
+| Finnhub | 30 calls/second |
+| FMP | 250 calls/day |
+| Alpha Vantage | 25 calls/day |
+| Neon | 512 MB storage |
+
+**Call budget per daily scan (20 symbols, ~10 Minervini survivors):**
+
+| Data | Source | Calls |
 |---|---|---|
-| Finnhub | 30 calls/second | 100 candle + 100 quote calls completes in ~7 seconds |
-| FMP | 250 calls/day | 1 screener call (seed) + up to 100 fundamentals calls = ~101/day |
-| Neon | 512 MB bandwidth/30 days | Negligible for alert/scan row writes |
+| Daily OHLCV history | Tiingo | 20 |
+| Profile + market cap | Finnhub | ~10 (survivors only) |
+| Quarterly income statements | FMP | ~10 (survivors only) |
+| Sector/ROE fallback | Alpha Vantage | 0–5 (only on miss) |
+| News | Finnhub WebSocket | 0 (streaming) |
 
-**Data split for the daily scan:**
-
-| Data | Source | Calls/scan |
-|---|---|---|
-| Ticker universe | FMP screener | 1 (seed only, not per scan) |
-| Fundamentals (EPS growth, revenue, ROE) | FMP | 1 per ticker = 100 |
-| Daily candles (for SMA50/150/200, 52-week) | Finnhub | 1 per ticker = 100 |
-| Current quote (price, volume) | Finnhub | 1 per ticker = 100 |
-| News | Finnhub WebSocket | 0 (streaming, no polling) |
-
-Total per daily scan: ~200 Finnhub calls, ~100 FMP calls. Both within free tier limits.
+Total: ~40–45 calls per scan. Well within all free tier limits.
 
 ## 3 Core components
 
