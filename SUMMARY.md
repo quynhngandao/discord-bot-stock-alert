@@ -114,9 +114,10 @@ Just one app with clear modules.
 - TypeScript
 - Node.js
 - discord.js
-- PostgreSQL
+- Neon (serverless PostgreSQL)
 - cron scheduler
-- stock API client
+- Finnhub (intraday quotes and news WebSocket)
+- Financial Modeling Prep / FMP (top ticker universe by market cap)
 - optional Redis later
 
 ## 3 Core components
@@ -579,7 +580,7 @@ Build this as:
 
 ### One database
 
-- PostgreSQL
+- Neon (serverless PostgreSQL)
 
 ### One scanner config file
 
@@ -604,8 +605,9 @@ export const scannerConfig = {
 - TypeScript + Node.js
 - discord.js
 - cron-based scanner
-- Finnhub as stock data provider
-- PostgreSQL + Drizzle ORM
+- Finnhub (intraday quotes and news WebSocket)
+- Financial Modeling Prep / FMP (top 100 ticker universe, refreshed via db:seed)
+- Neon (serverless PostgreSQL) + Drizzle ORM
 - daily scans only
 - rule engine with config-driven thresholds
 - alert dedupe table
@@ -636,5 +638,5 @@ This order:
 3. compute MAs + 52-week position
 4. score checklist
 5. send one Discord summary message
-6. store results in PostgreSQL
+6. store results in Neon
 7. add breakout alerts later

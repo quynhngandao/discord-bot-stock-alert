@@ -75,10 +75,7 @@ function handleMessage(raw: string): void {
 }
 
 async function getActiveTickers(): Promise<string[]> {
-  const rows = await db
-    .select({ ticker: symbols.ticker })
-    .from(symbols)
-    .where(eq(symbols.isActive, true));
+  const rows = await db.select().from(symbols).where(eq(symbols.isActive, true));
   return rows.map((r): string => r.ticker);
 }
 

@@ -2,7 +2,7 @@
 
 Alert-only Discord bot that scans stocks using Minervini and IBD criteria and posts trade setup alerts. No broker integration, no order execution.
 
-[Install Link](https://discord.com/oauth2/authorize?client_id=1503186612975177819)
+**Data sources:** Finnhub (quotes + news), Financial Modeling Prep / FMP (ticker universe by market cap), Neon (serverless PostgreSQL).
 
 ## Documentation
 
@@ -28,3 +28,5 @@ Alert-only Discord bot that scans stocks using Minervini and IBD criteria and po
 | `pnpm db:studio` | Open Drizzle Studio to browse the database |
 | `pnpm lint` | Run ESLint |
 | `pnpm format` | Format source files with Prettier |
+
+[Install Link](https://discord.com/oauth2/authorize?client_id=1503186612975177819)

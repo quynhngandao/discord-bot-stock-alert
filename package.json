@@ -20,6 +20,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
   },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": ["pg", "@types/pg"]
+    }
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

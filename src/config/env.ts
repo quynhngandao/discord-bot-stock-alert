@@ -8,6 +8,7 @@ const schema = z.object({
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_GUILD_ID: z.string().min(1),
   FINNHUB_API_KEY: z.string().min(1),
+  FMP_API_KEY: z.string().min(1),
   ALERT_CHANNEL_ID: z.string().min(1),
   DATABASE_URL: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
 });

@@ -3,11 +3,7 @@ import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
 
 export async function runScan(): Promise<void> {
-  const rows = await db
-    .select({ ticker: symbols.ticker })
-    .from(symbols)
-    .where(eq(symbols.isActive, true));
-
+  const rows = await db.select().from(symbols).where(eq(symbols.isActive, true));
   const tickers = rows.map((r) => r.ticker);
 
   console.log(`Scanning ${tickers.length} symbols...`);

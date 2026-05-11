@@ -4,8 +4,9 @@
 - **TypeScript**
 - **Node.js**
 - **discord.js**
-- **FinHub**
-- **PostgreSQL**
+- **Finnhub** (intraday quotes + news WebSocket)
+- **Financial Modeling Prep (FMP)** (top 100 US tickers by market cap)
+- **Neon** (serverless PostgreSQL)
 - **Drizzle**
 - **node-cron**
 - **dotenv**
