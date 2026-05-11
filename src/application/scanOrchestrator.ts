@@ -29,7 +29,7 @@ import { setIntradayWatchlist } from "./intradayMonitor.js";
 
 const SCHEDULED_SCAN_LIMIT = 25;
 // Increase limit as confidence grows. Sorted by id = market-cap priority (seed order).
-export const MANUAL_SCAN_LIMIT = 10;
+export const MANUAL_SCAN_LIMIT = 100;
 
 async function loadActiveTickers(limit: number): Promise<string[]> {
   const rows = await db
