@@ -17,12 +17,19 @@
   "dependencies": {
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "finnhub": "^2.0.14",
+    "node-cron": "^4.2.1",
+    "pg": "^8.20.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.2",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.59.2",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.3",
