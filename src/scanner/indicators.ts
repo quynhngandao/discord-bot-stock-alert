@@ -17,9 +17,7 @@ function sma(values: number[], period: number, offset: number = 0): number | nul
 
 // Ensure newest-first order regardless of API response ordering
 function sortNewestFirst(prices: FmpHistoricalPrice[]): FmpHistoricalPrice[] {
-  return [...prices].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  return [...prices].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export function computeMinerviniMetrics(
@@ -95,8 +93,7 @@ export function assignRelativeStrengthRanks(
   scored.sort((a, b) => a.rsScore - b.rsScore);
 
   for (let i = 0; i < scored.length; i++) {
-    const rank =
-      scored.length === 1 ? 100 : Math.round((i / (scored.length - 1)) * 100);
+    const rank = scored.length === 1 ? 100 : Math.round((i / (scored.length - 1)) * 100);
     scored[i]!.metrics.relativeStrengthRank = rank;
   }
 }
@@ -106,9 +103,7 @@ function computeYoYGrowth(
   all: FmpIncomeStatement[]
 ): { epsGrowth: number | null; revenueGrowth: number | null } {
   const priorYear = String(Number(latest.calendarYear) - 1);
-  const prior = all.find(
-    (s) => s.calendarYear === priorYear && s.period === latest.period
-  );
+  const prior = all.find((s) => s.calendarYear === priorYear && s.period === latest.period);
   if (!prior) return { epsGrowth: null, revenueGrowth: null };
 
   const epsGrowth =
@@ -148,7 +143,7 @@ export function computeIbdMetrics(
     revenueGrowthLatestQuarter: latestGrowth?.revenueGrowth ?? null,
     revenueGrowthPreviousQuarter: prevGrowth?.revenueGrowth ?? null,
     annualEpsGrowth3Y: null, // requires annual statements — add later
-    roe: null,               // not in current FMP fields — add later
+    roe: null, // not in current FMP fields — add later
     relativeStrengthRank: minervini.relativeStrengthRank,
     averageVolume50: minervini.averageVolume50,
   };

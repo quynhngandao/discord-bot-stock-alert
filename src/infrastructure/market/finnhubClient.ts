@@ -24,6 +24,40 @@ async function get<T>(path: string, params: Record<string, string> = {}): Promis
   return res.json() as Promise<T>;
 }
 
+interface FinnhubProfile {
+  ticker: string;
+  name: string;
+  finnhubIndustry: string;
+  marketCapitalization: number; // in millions
+  exchange: string;
+  country: string;
+  currency: string;
+  logo: string;
+  weburl: string;
+}
+
+export interface CompanyProfile {
+  symbol: string;
+  mktCap: number; // in dollars (converted from millions)
+  sector: string; // Finnhub doesn't expose sector, use empty string
+  industry: string; // finnhubIndustry
+}
+
 export const finnhubClient = {
   quote: (symbol: string) => get<Quote>("/quote", { symbol }),
+
+  profile: async (symbol: string): Promise<CompanyProfile | null> => {
+    try {
+      const raw = await get<FinnhubProfile>("/stock/profile2", { symbol });
+      if (!raw.ticker) return null; // empty response for unknown symbols
+      return {
+        symbol: raw.ticker,
+        mktCap: (raw.marketCapitalization ?? 0) * 1_000_000,
+        sector: "",
+        industry: raw.finnhubIndustry ?? "",
+      };
+    } catch {
+      return null;
+    }
+  },
 };

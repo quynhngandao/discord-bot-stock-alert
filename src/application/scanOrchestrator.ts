@@ -1,8 +1,12 @@
 import { eq } from "drizzle-orm";
 import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
-import type { FmpHistoricalPrice, FmpIncomeStatement, FmpProfile } from "../infrastructure/market/fmpClient.js";
-import { fetchHistoricalPrices, fetchIncomeStatements, fetchProfile } from "../infrastructure/market/fmpClient.js";
+import type { FmpHistoricalPrice, FmpIncomeStatement } from "../infrastructure/market/fmpClient.js";
+import { fetchIncomeStatements } from "../infrastructure/market/fmpClient.js";
+import { fetchHistoricalPrices } from "../infrastructure/market/tiingoClient.js";
+import { finnhubClient } from "../infrastructure/market/finnhubClient.js";
+import type { CompanyProfile } from "../infrastructure/market/finnhubClient.js";
+import { fetchProfileFallback } from "../infrastructure/market/alphaVantageClient.js";
 import { withRateLimit } from "../infrastructure/market/rateLimiter.js";
 import type { MinerviniMetrics, ScoringBreakdown, StockScanResult } from "../domain/types.js";
 import {
@@ -23,12 +27,11 @@ async function loadActiveTickers(): Promise<string[]> {
   return rows.map((r) => r.ticker).slice(0, SCAN_LIMIT);
 }
 
-async function fetchPricesForAll(
-  tickers: string[]
-): Promise<Map<string, FmpHistoricalPrice[]>> {
+async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHistoricalPrice[]>> {
   const results = await withRateLimit(
-    tickers.map((ticker) => (): Promise<[string, FmpHistoricalPrice[]]> =>
-      fetchHistoricalPrices(ticker).then((prices) => [ticker, prices])
+    tickers.map(
+      (ticker) => (): Promise<[string, FmpHistoricalPrice[]]> =>
+        fetchHistoricalPrices(ticker).then((prices) => [ticker, prices])
     )
   );
 
@@ -43,8 +46,9 @@ async function fetchFundamentalsForAll(
   tickers: string[]
 ): Promise<Map<string, FmpIncomeStatement[]>> {
   const results = await withRateLimit(
-    tickers.map((ticker) => (): Promise<[string, FmpIncomeStatement[]]> =>
-      fetchIncomeStatements(ticker, 8).then((stmts) => [ticker, stmts])
+    tickers.map(
+      (ticker) => (): Promise<[string, FmpIncomeStatement[]]> =>
+        fetchIncomeStatements(ticker, 8).then((stmts) => [ticker, stmts])
     )
   );
 
@@ -55,16 +59,17 @@ async function fetchFundamentalsForAll(
   return map;
 }
 
-async function fetchProfilesForAll(
-  tickers: string[]
-): Promise<Map<string, FmpProfile>> {
+async function fetchProfilesForAll(tickers: string[]): Promise<Map<string, CompanyProfile>> {
+  // Primary: Finnhub REST profile. Fallback: Alpha Vantage OVERVIEW.
   const results = await withRateLimit(
-    tickers.map((ticker) => (): Promise<[string, FmpProfile | null]> =>
-      fetchProfile(ticker).then((p) => [ticker, p])
-    )
+    tickers.map((ticker) => async (): Promise<[string, CompanyProfile | null]> => {
+      const profile = await finnhubClient.profile(ticker);
+      if (profile) return [ticker, profile];
+      return [ticker, await fetchProfileFallback(ticker)];
+    })
   );
 
-  const map = new Map<string, FmpProfile>();
+  const map = new Map<string, CompanyProfile>();
   for (const [ticker, profile] of results) {
     if (profile) map.set(ticker, profile);
   }
@@ -76,14 +81,12 @@ function buildScanResult(
   minerviniResult: RuleSetResult,
   ibdResult: RuleSetResult,
   scoreBreakdown: ScoringBreakdown,
-  profile: FmpProfile | null,
+  profile: CompanyProfile | null
 ): StockScanResult {
   const missingFields = [...minerviniResult.missingFields, ...ibdResult.missingFields];
   const totalRules = minerviniResult.rules.length + ibdResult.rules.length;
   const dataCompletenessScore =
-    totalRules === 0
-      ? 100
-      : Math.round(((totalRules - missingFields.length) / totalRules) * 100);
+    totalRules === 0 ? 100 : Math.round(((totalRules - missingFields.length) / totalRules) * 100);
 
   return {
     symbol: minervini.symbol,
@@ -92,8 +95,10 @@ function buildScanResult(
     sector: profile?.sector ?? null,
     industry: profile?.industry ?? null,
 
-    epsGrowthLatestQuarter: ibdResult.rules.find((r) => r.name === "EPS growth latest Q")?.value ?? null,
-    revenueGrowthLatestQuarter: ibdResult.rules.find((r) => r.name === "Revenue growth latest Q")?.value ?? null,
+    epsGrowthLatestQuarter:
+      ibdResult.rules.find((r) => r.name === "EPS growth latest Q")?.value ?? null,
+    revenueGrowthLatestQuarter:
+      ibdResult.rules.find((r) => r.name === "Revenue growth latest Q")?.value ?? null,
 
     sma50: minervini.sma50,
     sma150: minervini.sma150,
@@ -146,9 +151,7 @@ export async function runScan(): Promise<StockScanResult[]> {
   const minerviniPassing = minerviniMetrics.filter(
     (m) => evaluateMinervini(m).passesAvailableRules
   );
-  console.log(
-    `Minervini filter: ${minerviniPassing.length}/${minerviniMetrics.length} passed`
-  );
+  console.log(`Minervini filter: ${minerviniPassing.length}/${minerviniMetrics.length} passed`);
 
   if (minerviniPassing.length === 0) {
     console.log("No stocks passed Minervini filter.");
@@ -180,8 +183,8 @@ export async function runScan(): Promise<StockScanResult[]> {
 
     console.log(
       `${minervini.symbol.padEnd(6)} score=${scoreBreakdown.total} ` +
-      `available=${result.passesAvailableRules} strict=${result.passesStrictRules} ` +
-      `data=${result.dataCompletenessScore}%`
+        `available=${result.passesAvailableRules} strict=${result.passesStrictRules} ` +
+        `data=${result.dataCompletenessScore}%`
     );
   }
 

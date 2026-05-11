@@ -3,16 +3,16 @@ import type { IbdApproxMetrics, MinerviniMetrics } from "../domain/types.js";
 
 export interface RuleResult {
   name: string;
-  passed: boolean;       // lenient: null treated as passing (skip)
+  passed: boolean; // lenient: null treated as passing (skip)
   passedStrict: boolean; // strict: null treated as failing
-  missing: boolean;      // true when value was null
+  missing: boolean; // true when value was null
   value: number | null;
   threshold: number | null;
 }
 
 export interface RuleSetResult {
   passesAvailableRules: boolean; // all non-missing rules passed (for candidate discovery)
-  passesStrictRules: boolean;    // all rules passed including null checks (for Discord alerts)
+  passesStrictRules: boolean; // all rules passed including null checks (for Discord alerts)
   missingFields: string[];
   dataCompletenessScore: number; // 0–100
   rules: RuleResult[];
@@ -44,12 +44,12 @@ export function evaluateMinervini(m: MinerviniMetrics): RuleSetResult {
   const cfg = scannerConfig.minervini;
 
   const rules: RuleResult[] = [
-    rule("close > sma50",   m.close,  m.sma50,  (v, t) => v > t),
-    rule("close > sma150",  m.close,  m.sma150, (v, t) => v > t),
-    rule("close > sma200",  m.close,  m.sma200, (v, t) => v > t),
-    rule("sma50 > sma150",  m.sma50,  m.sma150, (v, t) => v > t),
+    rule("close > sma50", m.close, m.sma50, (v, t) => v > t),
+    rule("close > sma150", m.close, m.sma150, (v, t) => v > t),
+    rule("close > sma200", m.close, m.sma200, (v, t) => v > t),
+    rule("sma50 > sma150", m.sma50, m.sma150, (v, t) => v > t),
     rule("sma150 > sma200", m.sma150, m.sma200, (v, t) => v > t),
-    rule("sma200 rising",   m.sma200, m.sma200OneMonthAgo, (v, t) => v > t),
+    rule("sma200 rising", m.sma200, m.sma200OneMonthAgo, (v, t) => v > t),
     rule(
       "% above 52w low",
       m.percentAboveLow52Week,

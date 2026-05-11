@@ -31,16 +31,16 @@ export const scannerConfig = {
   // Minervini trend template thresholds
   minervini: {
     minAvgVolume50: 500_000,
-    minPercentAboveLow52Week: 25,  // close >= low52Week * 1.25
-    maxPercentFromHigh52Week: 25,  // close >= high52Week * 0.75
+    minPercentAboveLow52Week: 25, // close >= low52Week * 1.25
+    maxPercentFromHigh52Week: 25, // close >= high52Week * 0.75
     minRsRank: 70,
   },
 
   // IBD / CAN SLIM approximate thresholds
   ibd: {
-    minEpsGrowthLatestQuarter: 25,      // %
-    minEpsGrowthPreviousQuarter: 25,    // %
-    minRevenueGrowthLatestQuarter: 20,  // %
+    minEpsGrowthLatestQuarter: 25, // %
+    minEpsGrowthPreviousQuarter: 25, // %
+    minRevenueGrowthLatestQuarter: 20, // %
     minRevenueGrowthPreviousQuarter: 20, // %
     minAvgVolume50: 500_000,
     minRsRank: 80,

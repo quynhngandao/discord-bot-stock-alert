@@ -67,7 +67,10 @@ export async function fetchProfile(symbol: string): Promise<FmpProfile | null> {
   return results[0] ?? null;
 }
 
-export async function fetchIncomeStatements(symbol: string, limit = 8): Promise<FmpIncomeStatement[]> {
+export async function fetchIncomeStatements(
+  symbol: string,
+  limit = 8
+): Promise<FmpIncomeStatement[]> {
   return get<FmpIncomeStatement[]>(`/income-statement/${symbol}`, {
     period: "quarter",
     limit: String(limit),
@@ -75,8 +78,6 @@ export async function fetchIncomeStatements(symbol: string, limit = 8): Promise<
 }
 
 export async function fetchHistoricalPrices(symbol: string): Promise<FmpHistoricalPrice[]> {
-  const res = await get<{ historical: FmpHistoricalPrice[] }>(
-    `/historical-price-full/${symbol}`
-  );
+  const res = await get<{ historical: FmpHistoricalPrice[] }>(`/historical-price-full/${symbol}`);
   return res.historical ?? [];
 }

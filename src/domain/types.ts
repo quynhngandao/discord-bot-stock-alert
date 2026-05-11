@@ -1,9 +1,9 @@
 export interface ScoringBreakdown {
-  trend: number;      // 0–40
+  trend: number; // 0–40
   leadership: number; // 0–30
-  setup: number;      // 0–20
-  market: number;     // 0–10
-  total: number;      // 0–100
+  setup: number; // 0–20
+  market: number; // 0–10
+  total: number; // 0–100
 }
 
 export interface MinerviniMetrics {

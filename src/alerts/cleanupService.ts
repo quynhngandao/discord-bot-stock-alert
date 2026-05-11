@@ -13,5 +13,7 @@ export async function runDailyCleanup(): Promise<void> {
     db.delete(scanSnapshots).where(lt(scanSnapshots.scanDate, cutoff)),
   ]);
 
-  console.log(`Cleanup: removed alerts and scan snapshots older than ${RETENTION_DAYS} days (cutoff: ${cutoff.toDateString()})`);
+  console.log(
+    `Cleanup: removed alerts and scan snapshots older than ${RETENTION_DAYS} days (cutoff: ${cutoff.toDateString()})`
+  );
 }
