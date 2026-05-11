@@ -13,7 +13,7 @@ function todayStart(): Date {
 }
 
 async function handleScan(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.reply({ content: "Starting scan...", ephemeral: true });
+  await interaction.deferReply({ ephemeral: true });
 
   if (isMarketClosed()) {
     await interaction.editReply("Market is closed today — scan skipped. Use `/scan` on a trading day.");
@@ -30,7 +30,9 @@ async function handleScan(interaction: ChatInputCommandInteraction): Promise<voi
 }
 
 async function handleStatus(interaction: ChatInputCommandInteraction): Promise<void> {
-  const symbolRows = await db.select().from(symbols).where(gte(symbols.id, 0));
+  await interaction.deferReply({ ephemeral: true });
+
+  const symbolRows = await db.select().from(symbols);
   const activeCount = symbolRows.filter((s) => s.isActive).length;
 
   const nextScan = "Weekdays at 8:05 AM CST (25 min before market open)";
@@ -47,10 +49,12 @@ async function handleStatus(interaction: ChatInputCommandInteraction): Promise<v
     .setFooter({ text: DISCLAIMER })
     .setTimestamp();
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.editReply({ embeds: [embed] });
 }
 
 async function handleWatchlist(interaction: ChatInputCommandInteraction): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
+
   const rows = await db
     .select()
     .from(alerts)
@@ -58,7 +62,7 @@ async function handleWatchlist(interaction: ChatInputCommandInteraction): Promis
     .limit(10);
 
   if (rows.length === 0) {
-    await interaction.reply({ content: "No alerts sent today.", ephemeral: true });
+    await interaction.editReply("No alerts sent today.");
     return;
   }
 
@@ -72,7 +76,7 @@ async function handleWatchlist(interaction: ChatInputCommandInteraction): Promis
     .setDescription(lines.join("\n"))
     .setTimestamp();
 
-  await interaction.reply({ embeds: [embed], ephemeral: true });
+  await interaction.editReply({ embeds: [embed] });
 }
 
 export async function handleCommand(interaction: ChatInputCommandInteraction): Promise<void> {
