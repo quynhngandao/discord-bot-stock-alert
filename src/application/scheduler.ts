@@ -1,12 +1,17 @@
 import cron from "node-cron";
 import { runScan } from "./scanOrchestrator.js";
 import { runDailyCleanup } from "../alerts/cleanupService.js";
+import { isMarketHoliday } from "../utils/marketCalendar.js";
 
 export function startScheduler(): void {
   // Daily scan — 8:05 AM CST weekdays (25 min before market open at 8:30 AM CST / 9:30 AM ET)
   cron.schedule(
     "5 8 * * 1-5",
     async () => {
+      if (isMarketHoliday()) {
+        console.log("Market holiday — skipping scan.");
+        return;
+      }
       await runScan();
     },
     { timezone: "America/Chicago" }
