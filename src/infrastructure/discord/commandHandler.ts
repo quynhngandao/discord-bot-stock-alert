@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
+import { ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from "discord.js";
 import { gte } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { alerts, symbols } from "../db/schema.js";
@@ -20,7 +20,7 @@ function todayKey(): string {
 }
 
 async function handleScan(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   if (isMarketClosed()) {
     await interaction.editReply("Market is closed today — scan skipped. Use `/scan` on a trading day.");
@@ -45,7 +45,7 @@ async function handleScan(interaction: ChatInputCommandInteraction): Promise<voi
 }
 
 async function handleStatus(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const symbolRows = await db.select().from(symbols);
   const activeCount = symbolRows.filter((s) => s.isActive).length;
@@ -68,7 +68,7 @@ async function handleStatus(interaction: ChatInputCommandInteraction): Promise<v
 }
 
 async function handleWatchlist(interaction: ChatInputCommandInteraction): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const rows = await db
     .select()
@@ -104,7 +104,7 @@ export async function handleCommand(interaction: ChatInputCommandInteraction): P
     if (interaction.replied || interaction.deferred) {
       await interaction.editReply("Something went wrong.").catch(() => null);
     } else {
-      await interaction.reply({ content: "Something went wrong.", ephemeral: true }).catch(() => null);
+      await interaction.reply({ content: "Something went wrong.", flags: MessageFlags.Ephemeral }).catch(() => null);
     }
   }
 }
