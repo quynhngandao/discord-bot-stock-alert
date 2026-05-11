@@ -38,8 +38,8 @@ interface FinnhubProfile {
 
 export interface CompanyProfile {
   symbol: string;
+  name: string;
   mktCap: number; // in dollars (converted from millions)
-  sector: string; // Finnhub doesn't expose sector, use empty string
   industry: string; // finnhubIndustry
 }
 
@@ -52,8 +52,8 @@ export const finnhubClient = {
       if (!raw.ticker) return null; // empty response for unknown symbols
       return {
         symbol: raw.ticker,
+        name: raw.name ?? "",
         mktCap: (raw.marketCapitalization ?? 0) * 1_000_000,
-        sector: "",
         industry: raw.finnhubIndustry ?? "",
       };
     } catch {

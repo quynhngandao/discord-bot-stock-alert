@@ -3,6 +3,7 @@ import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
 import type { HistoricalPrice, IncomeStatement } from "../domain/types.js";
 import { fetchHistoricalPrices } from "../infrastructure/market/tiingoClient.js";
+import { fetchHistoricalPrices as fetchHistoricalPricesYahoo } from "../infrastructure/market/yahooFinanceClient.js";
 import { fetchFinancials } from "../infrastructure/market/polygonClient.js";
 import {
   getCachedFundamentals,
@@ -24,6 +25,7 @@ import type { RuleSetResult } from "../scanner/ruleEngine.js";
 import { computeScore } from "../scanner/scoring.js";
 import { processResults } from "../alerts/alertEngine.js";
 import { sendScanSkipped } from "../infrastructure/discord/scanAlertAdapter.js";
+import { setIntradayWatchlist } from "./intradayMonitor.js";
 
 const SCHEDULED_SCAN_LIMIT = 25;
 // Increase limit as confidence grows. Sorted by id = market-cap priority (seed order).
@@ -40,18 +42,38 @@ async function loadActiveTickers(limit: number): Promise<string[]> {
   return Array.from(new Set(["SPY", ...tickers]));
 }
 
-async function fetchPricesForAll(tickers: string[]): Promise<Map<string, HistoricalPrice[]>> {
+async function fetchPricesForAll(
+  tickers: string[],
+  provider: "tiingo" | "yahoo" = "tiingo"
+): Promise<Map<string, HistoricalPrice[]>> {
+  const delayMs = provider === "yahoo" ? 200 : 500;
   const results = await withRateLimit(
     tickers.map(
-      (ticker) => (): Promise<[string, HistoricalPrice[]] | null> =>
-        fetchHistoricalPrices(ticker)
+      (ticker) => (): Promise<[string, HistoricalPrice[]] | null> => {
+        if (provider === "yahoo") {
+          return fetchHistoricalPricesYahoo(ticker)
+            .then((prices) => [ticker, prices] as [string, HistoricalPrice[]])
+            .catch((err) => {
+              console.warn(`[Yahoo] ${ticker} failed: ${(err as Error).message}`);
+              return null;
+            });
+        }
+        return fetchHistoricalPrices(ticker)
           .then((prices) => [ticker, prices] as [string, HistoricalPrice[]])
-          .catch((err) => {
-            console.warn(`[Tiingo] Skipping ${ticker}: ${(err as Error).message}`);
-            return null;
-          })
+          .catch(async (err) => {
+            console.warn(`[Tiingo] ${ticker} failed (${(err as Error).message}), trying Yahoo Finance...`);
+            try {
+              const prices = await fetchHistoricalPricesYahoo(ticker);
+              console.log(`[Yahoo] ${ticker} fallback succeeded`);
+              return [ticker, prices] as [string, HistoricalPrice[]];
+            } catch (yahooErr) {
+              console.warn(`[Yahoo] ${ticker} also failed: ${(yahooErr as Error).message}`);
+              return null;
+            }
+          });
+      }
     ),
-    500
+    delayMs
   );
 
   const map = new Map<string, HistoricalPrice[]>();
@@ -154,10 +176,10 @@ function buildScanResult(
 
   return {
     symbol: minervini.symbol,
+    companyName: profile?.name || null,
     close: minervini.close,
     marketCap: profile?.mktCap ?? null,
-    sector: profile?.sector ?? null,
-    industry: profile?.industry ?? null,
+    industry: profile?.industry || null,
 
     epsGrowthLatestQuarter:
       ibdResult.rules.find((r) => r.name === "EPS growth latest Q")?.value ?? null,
@@ -191,13 +213,13 @@ function buildScanResult(
   };
 }
 
-export async function runScan(limit = SCHEDULED_SCAN_LIMIT): Promise<StockScanResult[]> {
+export async function runScan(limit = SCHEDULED_SCAN_LIMIT, provider: "tiingo" | "yahoo" = "tiingo"): Promise<StockScanResult[]> {
   const tickers = await loadActiveTickers(limit);
-  console.log(`Scanning ${tickers.length} symbols...`);
+  console.log(`Scanning ${tickers.length} symbols via ${provider}...`);
 
   // Step 1: fetch historical prices for all tickers
-  console.log("Fetching historical prices...");
-  const priceMap = await fetchPricesForAll(tickers);
+  console.log(`Fetching historical prices via ${provider}...`);
+  const priceMap = await fetchPricesForAll(tickers, provider);
 
   if (priceMap.size === 0) {
     const msg = "Historical price data unavailable — Tiingo API rate limit reached. No stocks could be evaluated. Please wait before retrying.";
@@ -284,5 +306,6 @@ export async function runScan(limit = SCHEDULED_SCAN_LIMIT): Promise<StockScanRe
   );
 
   await processResults(scanResults);
+  setIntradayWatchlist(scanResults.filter((r) => r.passesMinervini));
   return scanResults;
 }

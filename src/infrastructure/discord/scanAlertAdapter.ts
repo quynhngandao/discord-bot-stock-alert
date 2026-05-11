@@ -3,6 +3,7 @@ import { env } from "../../config/env.js";
 import { DISCLAIMER } from "../../config/alertConfig.js";
 import type { StockScanResult } from "../../domain/types.js";
 import { discordClient } from "./client.js";
+import { sendAlert } from "./notificationAdapter.js";
 
 export async function sendNewsAlert(
   ticker: string,
@@ -47,44 +48,27 @@ export async function sendScanAlert(
   score: number,
   priority: "WATCHLIST" | "HIGH PRIORITY"
 ): Promise<void> {
-  const channel = await discordClient.channels.fetch(env.ALERT_CHANNEL_ID);
-  if (!(channel instanceof TextChannel)) {
-    throw new Error(`Channel ${env.ALERT_CHANNEL_ID} is not a text channel`);
-  }
+  const formatGrowth = (v: number | null) =>
+    v === null ? "N/A" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
 
-  const color = priority === "HIGH PRIORITY" ? 0xffd700 : 0x00b4d8;
+  const rsVsSpy = result.beatsSpy63d
+    ? result.beatsSpy21d ? "Outperforming SPY on 63d and 21d" : "Outperforming SPY on 63d"
+    : "Underperforming SPY";
 
-  const rsLine = result.beatsSpy63d
-    ? result.beatsSpy21d
-      ? "63d ✅ · 21d ✅ (both outperforming SPY)"
-      : "63d ✅ · 21d ❌ (outperforming SPY on 63d)"
-    : "❌ Not outperforming SPY";
-
-  const volRatioStr = result.volumeRatioPrevDay.toFixed(2);
-  const avgVolStr = (result.averageVolume50 / 1_000_000).toFixed(1) + "M";
-
-  const embed = new EmbedBuilder()
-    .setTitle(`${priority} — ${result.symbol}`)
-    .setDescription(`Daily scan · Score: **${score}/100**`)
-    .setColor(color)
-    .addFields(
-      { name: "Close", value: `$${result.close.toFixed(2)}`, inline: true },
-      { name: "From 52w High", value: `${result.percentFromHigh52Week.toFixed(1)}%`, inline: true },
-      { name: "Above 52w Low", value: `+${result.percentAboveLow52Week.toFixed(1)}%`, inline: true },
-      {
-        name: "Trend",
-        value: `50d: $${result.sma50.toFixed(2)} · 150d: $${result.sma150.toFixed(2)} · 200d: $${result.sma200.toFixed(2)}`,
-        inline: false,
-      },
-      { name: "Relative Strength", value: rsLine, inline: false },
-      {
-        name: "Volume",
-        value: `50d avg: ${avgVolStr} · Prior-day ratio: ${volRatioStr}x`,
-        inline: false,
-      }
-    )
-    .setFooter({ text: DISCLAIMER })
-    .setTimestamp();
-
-  await channel.send({ embeds: [embed] });
+  await sendAlert({
+    ticker: result.symbol,
+    price: result.close,
+    direction: "BULLISH",
+    label: priority,
+    alertType: "Minervini trend setup",
+    trendDescription: `Price above 50d, 150d, and 200d SMA`,
+    movingAverages: `SMA50: $${result.sma50.toFixed(2)} · SMA150: $${result.sma150.toFixed(2)} · SMA200: $${result.sma200.toFixed(2)}`,
+    relativeVolume: result.volumeRatioPrevDay,
+    keyLevel: result.sma50,
+    invalidationArea: result.sma150,
+    potentialArea: result.high52Week,
+    reason: `Score ${score}/100 · EPS ${formatGrowth(result.epsGrowthLatestQuarter)} · Rev ${formatGrowth(result.revenueGrowthLatestQuarter)} · ${rsVsSpy}`,
+    companyName: result.companyName ?? undefined,
+    industry: result.industry ?? undefined,
+  });
 }

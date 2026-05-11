@@ -66,9 +66,9 @@ export interface IbdApproxMetrics {
 
 export interface StockScanResult {
   symbol: string;
+  companyName: string | null;
   close: number;
   marketCap: number | null;
-  sector: string | null;
   industry: string | null;
 
   epsGrowthLatestQuarter: number | null;

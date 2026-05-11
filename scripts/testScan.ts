@@ -6,7 +6,7 @@ discordClient.once("clientReady", async (client) => {
   console.log("Starting scan...\n");
 
   try {
-    const results = await runScan();
+    const results = await runScan(undefined, "yahoo");
 
     console.log("\n=== SCAN SUMMARY ===");
     for (const r of results) {

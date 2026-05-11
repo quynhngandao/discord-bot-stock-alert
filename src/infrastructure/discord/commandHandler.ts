@@ -36,7 +36,7 @@ async function handleScan(interaction: ChatInputCommandInteraction): Promise<voi
   manualScanCount.set(key, count + 1);
 
   try {
-    const results = await runScan(MANUAL_SCAN_LIMIT);
+    const results = await runScan(MANUAL_SCAN_LIMIT, "yahoo");
     const passed = results.filter((r) => r.passesAvailableRules).length;
     await interaction.editReply(`Scan complete (${count + 1}/${MAX_MANUAL_SCANS_PER_DAY} today) — ${results.length} candidates, ${passed} passed filters.`);
   } catch (err) {

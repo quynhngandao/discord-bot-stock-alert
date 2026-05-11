@@ -7,13 +7,17 @@ export interface AlertPayload {
   ticker: string;
   price: number;
   direction: "BULLISH" | "BEARISH";
-  alertType: string;
-  trend: string;
+  label: string;              // title suffix: "WATCHLIST", "HIGH PRIORITY", "WATCH"
+  alertType: string;          // Setup field: "VWAP reclaim", "Minervini trend setup"
+  trendDescription: string;   // Trend field: "Price above VWAP, 20 EMA > 50 EMA"
+  movingAverages: string;     // Moving Average field: "EMA20: $X · SMA50: $X"
   relativeVolume: number;
   keyLevel: number;
   invalidationArea: number;
   potentialArea: number;
   reason: string;
+  companyName?: string;
+  industry?: string;
 }
 
 export async function sendAlert(payload: AlertPayload): Promise<void> {
@@ -23,15 +27,28 @@ export async function sendAlert(payload: AlertPayload): Promise<void> {
   }
 
   const isBullish = payload.direction === "BULLISH";
+  const isHighPriority = payload.label === "HIGH PRIORITY";
+  const color = isBullish
+    ? isHighPriority ? 0xffd700 : 0x00c851   // gold : green
+    : isHighPriority ? 0xcc0000 : 0xff4444;  // dark red : red
+
+  const descParts: string[] = [];
+  if (payload.companyName) descParts.push(`**${payload.companyName}**`);
+  if (payload.industry) descParts.push(payload.industry);
+  descParts.push(isBullish ? "📈 Bullish setup detected" : "📉 Bearish setup detected");
+
   const embed = new EmbedBuilder()
-    .setTitle(`${payload.direction} WATCH — ${payload.ticker}`)
-    .setDescription(isBullish ? "📈 Bullish setup detected" : "📉 Bearish setup detected")
-    .setColor(isBullish ? 0x00c851 : 0xff4444)
+    .setTitle(`${payload.direction} ${payload.label} — ${payload.ticker}`)
+    .setDescription(descParts.join(" · "))
+    .setColor(color)
     .addFields(
       { name: "Price", value: `$${payload.price.toFixed(2)}`, inline: true },
       { name: "Setup", value: payload.alertType, inline: true },
       { name: "Relative Volume", value: `${payload.relativeVolume.toFixed(1)}x`, inline: true },
-      { name: "Trend", value: payload.trend, inline: false },
+      { name: "Trend", value: payload.trendDescription, inline: true },
+      { name: "\u200b", value: "\u200b", inline: true },
+      { name: "\u200b", value: "\u200b", inline: true },
+      { name: "Moving Averages", value: payload.movingAverages, inline: false },
       { name: "Key Level", value: `$${payload.keyLevel.toFixed(2)}`, inline: true },
       {
         name: "Invalidation",

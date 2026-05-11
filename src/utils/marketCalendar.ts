@@ -46,3 +46,12 @@ export function isWeekend(): boolean {
 export function isMarketClosed(): boolean {
   return isWeekend() || isMarketHoliday();
 }
+
+export function isMarketOpen(): boolean {
+  if (isMarketClosed()) return false;
+  // Market hours: 9:30 AM – 4:00 PM ET
+  const now = new Date();
+  const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const minutes = etTime.getHours() * 60 + etTime.getMinutes();
+  return minutes >= 9 * 60 + 30 && minutes < 16 * 60;
+}
