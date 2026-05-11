@@ -15,6 +15,8 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "test:alert": "tsx scripts/testAlert.ts",
+    "test:scan": "tsx scripts/testScan.ts",
+    "test:discord": "tsx scripts/testDiscord.ts",
     "db:seed": "tsx scripts/testSeedSymbols.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -22,7 +24,10 @@
   },
   "pnpm": {
     "peerDependencyRules": {
-      "ignoreMissing": ["pg", "@types/pg"]
+      "ignoreMissing": [
+        "pg",
+        "@types/pg"
+      ]
     }
   },
   "keywords": [],

@@ -1,13 +1,11 @@
 import { db } from "../src/infrastructure/db/client.js";
 import { symbols } from "../src/infrastructure/db/schema.js";
-import { fetchTopUSTickers } from "../src/infrastructure/market/fmpClient.js";
+import { SEED_TICKERS } from "../src/data/seedTickers.js";
 
-console.log("Fetching top 100 US tickers from FMP...");
-const tickers = await fetchTopUSTickers(100);
-console.log(`Fetched ${tickers.length} tickers`);
+const rows = [...new Set(SEED_TICKERS)].map((ticker) => ({ ticker, isActive: true }));
+console.log(`Seeding ${rows.length} symbols...`);
 
-const rows = tickers.map((ticker) => ({ ticker, isActive: true }));
 await db.insert(symbols).values(rows).onConflictDoNothing();
 
-console.log(`Seeded ${rows.length} symbols`);
+console.log(`Done — ${rows.length} symbols in universe`);
 process.exit(0);
