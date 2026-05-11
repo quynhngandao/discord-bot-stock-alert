@@ -1,3 +1,34 @@
+// Mega-cap tech — used for real-time news alerts (Finnhub paid plan required).
+export const MEGA_CAP_TECH_TICKERS: string[] = [
+  "AAPL",
+  "MSFT",
+  "NVDA",
+  "AMZN",
+  "META",
+  "GOOGL",
+  "GOOG",
+  "TSLA",
+  "AVGO",
+  "ORCL",
+  "AMD",
+  "INTC",
+  "QCOM",
+  "TXN",
+  "ADI",
+  "MCHP",
+  "MU",
+  "AMAT",
+  "LRCX",
+  "KLAC",
+  "SNPS",
+  "CDNS",
+  "ANSS",
+  "MRVL",
+  "ON",
+  "ARM",
+  "SMCI",
+];
+
 // S&P 500 large-caps + Nasdaq 100 components — used as the initial symbol universe.
 // Update periodically as index compositions change.
 export const SEED_TICKERS: string[] = [
@@ -100,7 +131,6 @@ export const SEED_TICKERS: string[] = [
   "WMT",
   "COST",
   "TGT",
-  "AMZN",
   "MCD",
   "SBUX",
   "NKE",
@@ -192,6 +222,5 @@ export const SEED_TICKERS: string[] = [
 
   // Other Nasdaq 100
   "ZM",
-  "ZOOM",
   "DOCU",
 ];

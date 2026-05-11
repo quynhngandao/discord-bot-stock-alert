@@ -1,11 +1,11 @@
-import { eq } from "drizzle-orm";
 import { env } from "../../config/env.js";
-import { db } from "../db/client.js";
-import { symbols } from "../db/schema.js";
+import { MEGA_CAP_TECH_TICKERS } from "../../data/seedTickers.js";
+import { sendNewsAlert } from "../discord/scanAlertAdapter.js";
 
 const WS_URL = `wss://ws.finnhub.io?token=${env.FINNHUB_API_KEY}`;
 const MAX_NEWS_PER_TICKER = 20;
 const RECONNECT_DELAY_MS = 5_000;
+const NEWS_ALERT_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes per ticker
 
 interface NewsItem {
   headline: string;
@@ -26,6 +26,7 @@ interface FinnhubNewsMessage {
 }
 
 const newsStore = new Map<string, NewsItem[]>();
+const lastAlertedAt = new Map<string, number>(); // ticker → timestamp
 
 export function getRecentNews(ticker: string): NewsItem[] {
   return newsStore.get(ticker) ?? [];
@@ -63,24 +64,30 @@ function handleMessage(raw: string): void {
 
   for (const item of msg.data) {
     if (!item.related) continue;
-    const existing = newsStore.get(item.related) ?? [];
+    const ticker = item.related;
+
+    const existing = newsStore.get(ticker) ?? [];
     newsStore.set(
-      item.related,
+      ticker,
       [
         { headline: item.headline, source: item.source, datetime: item.datetime, url: item.url },
         ...existing,
       ].slice(0, MAX_NEWS_PER_TICKER)
     );
+
+    // Send Discord alert for first news item within cooldown window
+    const last = lastAlertedAt.get(ticker) ?? 0;
+    if (Date.now() - last >= NEWS_ALERT_COOLDOWN_MS) {
+      lastAlertedAt.set(ticker, Date.now());
+      sendNewsAlert(ticker, item.headline, item.source, item.url).catch((err) => {
+        console.error(`[Discord] Failed to send news alert for ${ticker}:`, err);
+      });
+    }
   }
 }
 
-async function getActiveTickers(): Promise<string[]> {
-  const rows = await db.select().from(symbols).where(eq(symbols.isActive, true));
-  return rows.map((r): string => r.ticker);
-}
-
 export async function startNewsWebSocket(): Promise<void> {
-  const tickers = await getActiveTickers();
+  const tickers = MEGA_CAP_TECH_TICKERS;
 
   function connect(): void {
     const socket = new WebSocket(WS_URL);

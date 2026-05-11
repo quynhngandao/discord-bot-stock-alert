@@ -3,9 +3,9 @@ import { runScan } from "./scanOrchestrator.js";
 import { runDailyCleanup } from "../alerts/cleanupService.js";
 
 export function startScheduler(): void {
-  // Daily scan — 8:25 AM CST weekdays (5 min before market open at 8:30 AM CST / 9:30 AM ET)
+  // Daily scan — 8:05 AM CST weekdays (25 min before market open at 8:30 AM CST / 9:30 AM ET)
   cron.schedule(
-    "25 8 * * 1-5",
+    "5 8 * * 1-5",
     async () => {
       await runScan();
     },
@@ -21,5 +21,5 @@ export function startScheduler(): void {
     { timezone: "America/Chicago" }
   );
 
-  console.log("Scheduler started — daily scan at 8:25 AM CST, cleanup Sunday midnight CST");
+  console.log("Scheduler started — daily scan at 8:05 AM CST, cleanup Sunday midnight CST");
 }

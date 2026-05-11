@@ -9,6 +9,29 @@ function fmt(n: number | null, suffix = "%"): string {
   return `${n > 0 ? "+" : ""}${n.toFixed(1)}${suffix}`;
 }
 
+export async function sendNewsAlert(
+  ticker: string,
+  headline: string,
+  source: string,
+  url: string
+): Promise<void> {
+  const channel = await discordClient.channels.fetch(env.ALERT_CHANNEL_ID);
+  if (!(channel instanceof TextChannel)) return;
+
+  const embed = new EmbedBuilder()
+    .setTitle(`News — ${ticker}`)
+    .setDescription(`**${headline}**`)
+    .setColor(0xf4a261)
+    .addFields(
+      { name: "Source", value: source, inline: true },
+      { name: "Link", value: url, inline: false }
+    )
+    .setFooter({ text: DISCLAIMER })
+    .setTimestamp();
+
+  await channel.send({ embeds: [embed] });
+}
+
 export async function sendScanSkipped(reason: string): Promise<void> {
   const channel = await discordClient.channels.fetch(env.ALERT_CHANNEL_ID);
   if (!(channel instanceof TextChannel)) return;
