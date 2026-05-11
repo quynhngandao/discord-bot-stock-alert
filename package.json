@@ -15,6 +15,7 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "test:alert": "tsx scripts/testAlert.ts",
+    "db:seed": "tsx scripts/seedSymbols.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
@@ -23,18 +24,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
     "drizzle-orm": "^0.45.2",
     "finnhub": "^2.0.14",
     "node-cron": "^4.2.1",
-    "pg": "^8.20.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.2",
     "@types/node-cron": "^3.0.11",
-    "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@typescript-eslint/parser": "^8.59.2",
     "drizzle-kit": "^0.31.10",
