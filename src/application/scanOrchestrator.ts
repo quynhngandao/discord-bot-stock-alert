@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
 import type { FmpHistoricalPrice, FmpIncomeStatement } from "../infrastructure/market/fmpClient.js";
@@ -33,7 +33,11 @@ const SCHEDULED_SCAN_LIMIT = 25; // Increase to 167 slowly due to API rate limit
 export const MANUAL_SCAN_LIMIT = 10;
 
 async function loadActiveTickers(limit: number): Promise<string[]> {
-  const rows = await db.select().from(symbols).where(eq(symbols.isActive, true));
+  const rows = await db
+    .select()
+    .from(symbols)
+    .where(eq(symbols.isActive, true))
+    .orderBy(asc(symbols.id));
   return rows.map((r) => r.ticker).slice(0, limit);
 }
 
