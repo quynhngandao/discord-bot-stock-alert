@@ -1,3 +1,23 @@
+export interface HistoricalPrice {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjClose: number;
+  volume: number;
+}
+
+export interface IncomeStatement {
+  date: string;
+  calendarYear: string;
+  period: string;
+  eps: number | null;
+  revenue: number | null;
+  epsgrowth: number | null;
+  revenueGrowth: number | null;
+}
+
 export interface ScoringBreakdown {
   trend: number;    // 0–50
   rs: number;       // 0–20

@@ -1,5 +1,4 @@
-import type { FmpHistoricalPrice, FmpIncomeStatement } from "../infrastructure/market/fmpClient.js";
-import type { IbdApproxMetrics, MinerviniMetrics } from "../domain/types.js";
+import type { HistoricalPrice, IncomeStatement, IbdApproxMetrics, MinerviniMetrics } from "../domain/types.js";
 
 const TRADING_DAYS_PER_YEAR = 252;
 const TRADING_DAYS_PER_MONTH = 20;
@@ -23,13 +22,13 @@ function computeReturn(closes: number[], bars: number): number | null {
 }
 
 // Ensure newest-first order regardless of API response ordering
-function sortNewestFirst(prices: FmpHistoricalPrice[]): FmpHistoricalPrice[] {
+function sortNewestFirst(prices: HistoricalPrice[]): HistoricalPrice[] {
   return [...prices].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export function computeMinerviniMetrics(
   symbol: string,
-  prices: FmpHistoricalPrice[]
+  prices: HistoricalPrice[]
 ): MinerviniMetrics | null {
   const sorted = sortNewestFirst(prices);
   if (sorted.length < MIN_REQUIRED_DAYS) return null;
@@ -37,10 +36,10 @@ export function computeMinerviniMetrics(
   const latestPrice = sorted[0];
   if (!latestPrice) return null;
 
-  const closes = sorted.map((p: FmpHistoricalPrice): number => p.close);
-  const highs = sorted.map((p: FmpHistoricalPrice): number => p.high);
-  const lows = sorted.map((p: FmpHistoricalPrice): number => p.low);
-  const volumes = sorted.map((p: FmpHistoricalPrice): number => p.volume);
+  const closes = sorted.map((p: HistoricalPrice): number => p.close);
+  const highs = sorted.map((p: HistoricalPrice): number => p.high);
+  const lows = sorted.map((p: HistoricalPrice): number => p.low);
+  const volumes = sorted.map((p: HistoricalPrice): number => p.volume);
 
   const sma50 = sma(closes, 50);
   const sma150 = sma(closes, 150);
@@ -90,7 +89,7 @@ export function computeMinerviniMetrics(
 
 // 12-month price return used to rank stocks cross-sectionally.
 // prices must be sorted newest-first.
-export function computeRsScore(prices: FmpHistoricalPrice[]): number {
+export function computeRsScore(prices: HistoricalPrice[]): number {
   const sorted = sortNewestFirst(prices);
   const yearPrices = sorted.slice(0, Math.min(sorted.length, TRADING_DAYS_PER_YEAR));
   if (yearPrices.length < 2) return 0;
@@ -121,7 +120,7 @@ export function assignRelativeStrengthRanks(
 
 // Extracts SPY's 63-day and 21-day returns from its historical prices.
 export function computeSpyReturns(
-  spyPrices: FmpHistoricalPrice[]
+  spyPrices: HistoricalPrice[]
 ): { return63d: number | null; return21d: number | null } {
   const sorted = sortNewestFirst(spyPrices);
   const closes = sorted.map((p) => p.close);
@@ -132,8 +131,8 @@ export function computeSpyReturns(
 }
 
 function computeYoYGrowth(
-  latest: FmpIncomeStatement,
-  all: FmpIncomeStatement[]
+  latest: IncomeStatement,
+  all: IncomeStatement[]
 ): { epsGrowth: number | null; revenueGrowth: number | null } {
   const priorYear = String(Number(latest.calendarYear) - 1);
   const prior = all.find((s) => s.calendarYear === priorYear && s.period === latest.period);
@@ -152,7 +151,7 @@ function computeYoYGrowth(
   return { epsGrowth, revenueGrowth };
 }
 
-function computeAccumulationRatio(prices: FmpHistoricalPrice[], lookback = 50): number | null {
+function computeAccumulationRatio(prices: HistoricalPrice[], lookback = 50): number | null {
   const sorted = sortNewestFirst(prices);
   if (sorted.length < 2) return null;
   const window = sorted.slice(0, Math.min(lookback + 1, sorted.length));
@@ -170,12 +169,12 @@ function computeAccumulationRatio(prices: FmpHistoricalPrice[], lookback = 50): 
 // statements should be sorted newest-first and include at least 5 quarters for YoY coverage
 export function computeIbdMetrics(
   symbol: string,
-  statements: FmpIncomeStatement[],
+  statements: IncomeStatement[],
   minervini: MinerviniMetrics,
-  prices: FmpHistoricalPrice[]
+  prices: HistoricalPrice[]
 ): IbdApproxMetrics {
   const quarterly = statements.filter(
-    (s: FmpIncomeStatement): boolean =>
+    (s: IncomeStatement): boolean =>
       s.period === "Q1" || s.period === "Q2" || s.period === "Q3" || s.period === "Q4"
   );
 

@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
-import type { FmpHistoricalPrice, FmpIncomeStatement } from "../infrastructure/market/fmpClient.js";
+import type { HistoricalPrice, IncomeStatement } from "../domain/types.js";
 import { fetchHistoricalPrices } from "../infrastructure/market/tiingoClient.js";
 import { fetchFinancials } from "../infrastructure/market/polygonClient.js";
 import {
@@ -40,12 +40,12 @@ async function loadActiveTickers(limit: number): Promise<string[]> {
   return Array.from(new Set(["SPY", ...tickers]));
 }
 
-async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHistoricalPrice[]>> {
+async function fetchPricesForAll(tickers: string[]): Promise<Map<string, HistoricalPrice[]>> {
   const results = await withRateLimit(
     tickers.map(
-      (ticker) => (): Promise<[string, FmpHistoricalPrice[]] | null> =>
+      (ticker) => (): Promise<[string, HistoricalPrice[]] | null> =>
         fetchHistoricalPrices(ticker)
-          .then((prices) => [ticker, prices] as [string, FmpHistoricalPrice[]])
+          .then((prices) => [ticker, prices] as [string, HistoricalPrice[]])
           .catch((err) => {
             console.warn(`[Tiingo] Skipping ${ticker}: ${(err as Error).message}`);
             return null;
@@ -54,7 +54,7 @@ async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHist
     500
   );
 
-  const map = new Map<string, FmpHistoricalPrice[]>();
+  const map = new Map<string, HistoricalPrice[]>();
   for (const result of results) {
     if (result) map.set(result[0], result[1]);
   }
@@ -63,8 +63,8 @@ async function fetchPricesForAll(tickers: string[]): Promise<Map<string, FmpHist
 
 async function fetchFundamentalsForAll(
   tickers: string[]
-): Promise<{ statementsMap: Map<string, FmpIncomeStatement[]>; roeMap: Map<string, number> }> {
-  const statementsMap = new Map<string, FmpIncomeStatement[]>();
+): Promise<{ statementsMap: Map<string, IncomeStatement[]>; roeMap: Map<string, number> }> {
+  const statementsMap = new Map<string, IncomeStatement[]>();
   const roeMap = new Map<string, number>();
 
   const cacheMisses: string[] = [];
@@ -82,11 +82,11 @@ async function fetchFundamentalsForAll(
   // Polygon free: 5 calls/min — 12,500ms keeps us safely under the limit
   const results = await withRateLimit(
     cacheMisses.map(
-      (ticker) => (): Promise<[string, FmpIncomeStatement[], number | null] | null> =>
+      (ticker) => (): Promise<[string, IncomeStatement[], number | null] | null> =>
         fetchFinancials(ticker, 8)
           .then(async ({ statements, ttmRoe }) => {
             await setCachedFundamentals(ticker, statements);
-            return [ticker, statements, ttmRoe] as [string, FmpIncomeStatement[], number | null];
+            return [ticker, statements, ttmRoe] as [string, IncomeStatement[], number | null];
           })
           .catch((err) => {
             console.warn(`[Polygon] Fundamentals unavailable for ${ticker}: ${(err as Error).message}`);

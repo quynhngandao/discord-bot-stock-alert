@@ -1,5 +1,5 @@
 // Tiingo free: ~50 requests/hour. 500ms spacing = max 120/hour, but quota is the real limit.
-// Finnhub free: 30 calls/min. FMP free: 300 calls/min.
+// Finnhub free: 30 calls/min. Polygon free: 5 calls/min.
 const DEFAULT_DELAY_MS = 500;
 
 function delay(ms: number): Promise<void> {

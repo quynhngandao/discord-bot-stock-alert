@@ -33,6 +33,62 @@ Alert-only Discord bot that scans stocks using Minervini and IBD criteria and po
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | System architecture flowchart |
 | [SUMMARY.md](./SUMMARY.md) | High-level system design and component overview |
 
+## Project structure
+
+```
+src/
+├── index.ts                                   # Entry point — wires Discord client, scheduler, and command handler
+│
+├── domain/
+│   └── types.ts                               # Shared TypeScript types (StockScanResult, MinerviniMetrics, etc.)
+│
+├── data/
+│   └── seedTickers.ts                         # Ticker universe (100 tickers) and tier arrays — pure data, no logic
+│
+├── config/
+│   ├── alertConfig.ts                         # Alert threshold constants (score cutoffs, cooldowns)
+│   ├── env.ts                                 # Reads and validates environment variables
+│   ├── providerConfig.ts                      # Market data provider selection/config
+│   └── scannerConfig.ts                       # Scanner parameters (lookback windows, rule weights)
+│
+├── application/
+│   ├── scanOrchestrator.ts                    # Orchestrates a full scan: load tickers → fetch data → evaluate → alert
+│   └── scheduler.ts                           # Cron scheduler that triggers scans during market hours
+│
+├── alerts/
+│   ├── alertEngine.ts                         # Decides which scan results warrant a Discord alert
+│   ├── alertTierService.ts                    # Tier classification (bigTech / sectorLeaders / aiSpeculative) and per-tier thresholds
+│   ├── cleanupService.ts                      # Prunes stale alert state and old DB rows
+│   └── dedupeService.ts                       # Prevents duplicate alerts via message hash and cooldown checks
+│
+├── scanner/
+│   ├── indicators.ts                          # Computes technical indicators (SMAs, RS score, Minervini metrics)
+│   ├── ruleEngine.ts                          # Evaluates Minervini and IBD rule sets against computed metrics
+│   └── scoring.ts                             # Aggregates rule results into a single numeric score
+│
+├── infrastructure/
+│   ├── db/
+│   │   ├── client.ts                          # Drizzle ORM client / Postgres connection
+│   │   ├── schema.ts                          # DB table definitions (symbols, alerts, fundamentals_cache, etc.)
+│   │   └── fundamentalsCacheService.ts        # Read/write cache for Polygon fundamentals to avoid re-fetching
+│   │
+│   ├── discord/
+│   │   ├── client.ts                          # Discord.js client singleton
+│   │   ├── commandHandler.ts                  # Slash command registration and dispatch (/scan, etc.)
+│   │   ├── notificationAdapter.ts             # Low-level Discord message sender (embeds, formatting)
+│   │   └── scanAlertAdapter.ts                # Formats scan results into Discord alert embeds
+│   │
+│   └── market/
+│       ├── finnhubClient.ts                   # Fetches company profiles from Finnhub
+│       ├── fmpClient.ts                       # Fetches historical prices / income statements from FMP
+│       ├── polygonClient.ts                   # Fetches fundamentals (EPS, revenue, ROE) from Polygon
+│       ├── tiingoClient.ts                    # Fetches OHLCV historical price data from Tiingo
+│       └── rateLimiter.ts                     # Concurrency-limited queue to respect API rate limits
+│
+└── utils/
+    └── marketCalendar.ts                      # Checks whether current time falls within US market hours
+```
+
 ## Scripts
 
 | Command | Description |
@@ -60,8 +116,6 @@ DATABASE_URL=
 TIINGO_API_KEY=
 POLYGON_API_KEY=
 FINNHUB_API_KEY=
-FMP_API_KEY=        # required by env validation; not used by scan pipeline
-ALPHA_VANTAGE_API_KEY=  # required by env validation; not used by scan pipeline
 ```
 
 [Install Link](https://discord.com/oauth2/authorize?client_id=1503186612975177819)

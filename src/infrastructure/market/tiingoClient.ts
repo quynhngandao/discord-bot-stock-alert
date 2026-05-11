@@ -1,5 +1,5 @@
 import { env } from "../../config/env.js";
-import type { FmpHistoricalPrice } from "./fmpClient.js";
+import type { HistoricalPrice } from "../../domain/types.js";
 
 const BASE_URL = "https://api.tiingo.com";
 
@@ -41,14 +41,14 @@ function twoYearsAgo(): string {
 }
 
 // Returns newest-first to match the expected convention in indicators.ts
-export async function fetchHistoricalPrices(symbol: string): Promise<FmpHistoricalPrice[]> {
+export async function fetchHistoricalPrices(symbol: string): Promise<HistoricalPrice[]> {
   const rows = await get<TiingoEodRow[]>(`/tiingo/daily/${symbol}/prices`, {
     startDate: twoYearsAgo(),
   });
 
   return rows
     .map(
-      (r): FmpHistoricalPrice => ({
+      (r): HistoricalPrice => ({
         date: r.date.slice(0, 10),
         open: r.open,
         high: r.high,

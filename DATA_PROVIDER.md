@@ -8,8 +8,6 @@
 | Quarterly income statements + TTM ROE | **Polygon** | Post-Minervini filter only (free: 5 calls/min) |
 | Company profile, sector, industry | **Finnhub** | Post-Minervini filter only (free: 60 calls/min) |
 
-`FMP_API_KEY` and `ALPHA_VANTAGE_API_KEY` are still declared in `env.ts` but not used by the scan pipeline. Any non-empty string satisfies validation.
-
 ---
 
 ## Free-tier limits
@@ -55,4 +53,3 @@ Used for **company profile** (market cap, sector, industry) post-Minervini filte
 |---|---|
 | Polygon annual financials | `annualEpsGrowth3Y` — call `/vX/reference/financials?timeframe=annual` |
 | Polygon WebSocket | Intraday scanner in v2+ only |
-| Alpha Vantage | Fallback for ROE or sector if other providers miss |

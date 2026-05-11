@@ -1,5 +1,5 @@
 import { env } from "../../config/env.js";
-import type { FmpHistoricalPrice, FmpIncomeStatement } from "./fmpClient.js";
+import type { HistoricalPrice, IncomeStatement } from "../../domain/types.js";
 
 const BASE_URL = "https://api.polygon.io";
 
@@ -56,7 +56,7 @@ interface PolygonFinancialResult {
 }
 
 // Returns 2 years of daily adjusted OHLCV sorted newest-first
-export async function fetchHistoricalPrices(ticker: string): Promise<FmpHistoricalPrice[]> {
+export async function fetchHistoricalPrices(ticker: string): Promise<HistoricalPrice[]> {
   const to = new Date();
   const from = new Date();
   from.setFullYear(from.getFullYear() - 2);
@@ -102,7 +102,7 @@ function computeTtmRoe(results: PolygonFinancialResult[]): number | null {
 export async function fetchFinancials(
   ticker: string,
   limit = 8
-): Promise<{ statements: FmpIncomeStatement[]; ttmRoe: number | null }> {
+): Promise<{ statements: IncomeStatement[]; ttmRoe: number | null }> {
   const data = await get<{ results?: PolygonFinancialResult[]; status: string }>(
     "/vX/reference/financials",
     { ticker, timeframe: "quarterly", limit: String(limit), sort: "filing_date", order: "desc" }
@@ -114,7 +114,7 @@ export async function fetchFinancials(
 
   const quarterly = data.results.filter((r) => /^Q[1-4]$/.test(r.fiscal_period));
 
-  const statements: FmpIncomeStatement[] = quarterly.map((r) => ({
+  const statements: IncomeStatement[] = quarterly.map((r) => ({
     date: r.end_date,
     calendarYear: r.fiscal_year,
     period: r.fiscal_period,

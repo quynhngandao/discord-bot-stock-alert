@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
 import { db } from "./client.js";
 import { fundamentalsCache } from "./schema.js";
-import type { FmpIncomeStatement } from "../market/fmpClient.js";
+import type { IncomeStatement } from "../../domain/types.js";
 
 const CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 export async function getCachedFundamentals(
   ticker: string
-): Promise<FmpIncomeStatement[] | null> {
+): Promise<IncomeStatement[] | null> {
   const rows = await db
     .select()
     .from(fundamentalsCache)
@@ -19,12 +19,12 @@ export async function getCachedFundamentals(
   const age = Date.now() - new Date(row.cachedAt).getTime();
   if (age > CACHE_TTL_MS) return null;
 
-  return row.data as FmpIncomeStatement[];
+  return row.data as IncomeStatement[];
 }
 
 export async function setCachedFundamentals(
   ticker: string,
-  data: FmpIncomeStatement[]
+  data: IncomeStatement[]
 ): Promise<void> {
   await db
     .insert(fundamentalsCache)
