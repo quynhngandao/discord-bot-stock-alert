@@ -3,7 +3,7 @@ import { db } from "./client.js";
 import { fundamentalsCache } from "./schema.js";
 import type { FmpIncomeStatement } from "../market/fmpClient.js";
 
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 export async function getCachedFundamentals(
   ticker: string
