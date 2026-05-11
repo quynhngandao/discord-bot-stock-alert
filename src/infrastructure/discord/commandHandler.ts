@@ -81,7 +81,9 @@ async function handleWatchlist(interaction: ChatInputCommandInteraction): Promis
 
 export async function handleCommand(interaction: ChatInputCommandInteraction): Promise<void> {
   try {
-    if (interaction.commandName === "scan") await handleScan(interaction);
+    if (interaction.commandName === "ping") {
+      await interaction.reply({ content: "Pong", ephemeral: true });
+    } else if (interaction.commandName === "scan") await handleScan(interaction);
     else if (interaction.commandName === "status") await handleStatus(interaction);
     else if (interaction.commandName === "watchlist") await handleWatchlist(interaction);
   } catch (err) {

@@ -3,6 +3,10 @@ import { env } from "../src/config/env.js";
 
 const commands = [
   new SlashCommandBuilder()
+    .setName("ping")
+    .setDescription("Check if the bot is alive"),
+
+  new SlashCommandBuilder()
     .setName("scan")
     .setDescription("Trigger a manual scan now"),
 
