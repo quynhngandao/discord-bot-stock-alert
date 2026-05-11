@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../infrastructure/db/client.js";
 import { symbols } from "../infrastructure/db/schema.js";
 import type { FmpHistoricalPrice, FmpIncomeStatement, FmpProfile } from "../infrastructure/market/fmpClient.js";
-import { fetchHistoricalPrices, fetchIncomeStatements, fetchProfile } from "../infrastructure/market/yahooFinanceClient.js";
+import { fetchHistoricalPrices, fetchIncomeStatements, fetchProfile } from "../infrastructure/market/fmpClient.js";
 import { withRateLimit } from "../infrastructure/market/rateLimiter.js";
 import type { MinerviniMetrics, ScoringBreakdown, StockScanResult } from "../domain/types.js";
 import {
