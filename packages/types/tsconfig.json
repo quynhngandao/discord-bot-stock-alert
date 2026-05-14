@@ -1,0 +1,5 @@
+{
+  "extends": "@discord-stock-alert-bot/config/tsconfig.base.json",
+  "include": ["."],
+  "exclude": ["dist/**", "node_modules"]
+}

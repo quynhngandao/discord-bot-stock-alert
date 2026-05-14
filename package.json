@@ -10,8 +10,8 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix",
+    "lint": "eslint . ",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "commands:register": "tsx scripts/registerCommands.ts",
@@ -36,16 +36,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@neondatabase/serverless": "^1.1.0",
-    "discord.js": "^14.26.4",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
-    "finnhub": "^2.0.14",
-    "node-cron": "^4.2.1",
-    "ws": "^8.20.0",
-    "zod": "^4.4.3"
+    "@discord-stock-alert-bot/alerts": "workspace:*",
+    "@discord-stock-alert-bot/config": "workspace:*",
+    "@discord-stock-alert-bot/discord-client": "workspace:*",
+    "discord.js": "14.26.4"
   },
   "devDependencies": {
+    "@commitlint/cli": "21.0.1",
+    "@commitlint/config-conventional": "21.0.1",
+    "@eslint/js": "10.0.1",
     "@types/node": "^25.6.2",
     "@types/node-cron": "^3.0.11",
     "@types/ws": "^8.18.1",
@@ -54,6 +53,8 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
+    "globals": "17.6.0",
+    "lefthook": "2.1.6",
     "prettier": "^3.8.3",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3"
