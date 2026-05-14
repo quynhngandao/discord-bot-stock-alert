@@ -1,0 +1,26 @@
+{
+  "name": "alert-bot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@discord-stock-alert-bot/config": "workspace:*",
+    "@discord-stock-alert-bot/discord-client": "workspace:*",
+    "@discord-stock-alert-bot/db": "workspace:*"
+  },
+  "imports": {
+    "#*": [
+      "./src/*",
+      "./src/*.ts",
+      "./src/*.tsx",
+      "./src/*/index.ts",
+      "./src/*/index.tsx"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

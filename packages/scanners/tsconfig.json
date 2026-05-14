@@ -1,0 +1,5 @@
+{
+  "extends": "@discord-stock-alert-bot/config/tsconfig.base.json",
+  "include": ["src", "../../apps/alert-bot/src/commandHandler.ts"],
+  "exclude": ["node_modules", "dist"]
+}

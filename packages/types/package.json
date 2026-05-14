@@ -1,0 +1,24 @@
+{
+  "name": "@discord-stock-alert-bot/types",
+  "version": "1.0.0",
+  "description": "typescript configs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.ts"
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "25.6.2",
+    "dotenv": "^17.4.2"
+  },
+  "dependencies": {
+    "zod": "^4.4.3",
+    "@discord-stock-alert-bot/config": "workspace:*"
+  }
+}

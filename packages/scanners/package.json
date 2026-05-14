@@ -1,0 +1,22 @@
+{
+  "name": "@discord-stock-alert-bot/scanners",
+  "version": "1.0.0",
+  "description": "Discord client for stocks",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "license": "ISC",
+  "dependencies": {
+    "@discord-stock-alert-bot/config": "workspace:*",
+    "@discord-stock-alert-bot/types": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  }
+}
